@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "FinancialType" ADD VALUE 'CONTRACT_TEACHING_FEE';

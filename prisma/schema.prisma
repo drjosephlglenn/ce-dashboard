@@ -1,0 +1,445 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── ENUMS ───
+
+enum ClinicType {
+  PRIVATE_PRACTICE
+  HOSPITAL_SYSTEM
+  OUTPATIENT
+  SNF
+  OTHER
+}
+
+enum ClinicStatus {
+  LEAD
+  CONTACTED
+  INTERESTED
+  BOOKED
+  ACTIVE
+  CHURNED
+}
+
+enum ClinicSource {
+  EXISTING_NETWORK
+  REFERRAL
+  COLD_OUTREACH
+  CONFERENCE
+  INBOUND
+  OTHER
+}
+
+enum ContactRole {
+  OWNER
+  CLINIC_DIRECTOR
+  EDUCATION_COORD
+  MANAGER
+  CLINICIAN
+  OTHER
+}
+
+enum CourseFormat {
+  LIVE_PRIVATE
+  LIVE_PUBLIC
+  ONLINE_SELF_PACED
+  HYBRID
+}
+
+enum EventType {
+  PRIVATE
+  PUBLIC
+}
+
+enum EventStatus {
+  TENTATIVE
+  CONFIRMED
+  DEPOSIT_RECEIVED
+  COMPLETED
+  CANCELLED
+}
+
+enum OutreachMethod {
+  EMAIL
+  PHONE
+  IN_PERSON
+  SOCIAL_MEDIA
+  TEXT
+  OTHER
+}
+
+enum OutreachDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum OutreachOutcome {
+  NO_RESPONSE
+  INTERESTED
+  NOT_INTERESTED
+  FOLLOW_UP_NEEDED
+  BOOKED
+  REFERRED
+}
+
+enum RegistrationType {
+  PAID
+  FREE_HOST_SEAT
+  COMP
+}
+
+enum MaterialType {
+  SLIDE_DECK
+  HANDOUT
+  FLYER
+  CERTIFICATE_TEMPLATE
+  MARKETING_EMAIL
+  SOCIAL_MEDIA
+  CONTRACT
+  INVOICE_TEMPLATE
+  PHOTO
+  VIDEO
+  OTHER
+}
+
+enum FinancialType {
+  COURSE_REVENUE
+  CONTRACT_TEACHING_FEE
+  ONLINE_SALE
+  DEPOSIT
+  HOST_INCENTIVE_PAYOUT
+  TRAVEL_EXPENSE
+  INSTRUCTOR_PAY
+  OPERATING_EXPENSE
+  REFUND
+}
+
+enum PaymentMethod {
+  CHECK
+  BANK_TRANSFER
+  CREDIT_CARD
+  CASH
+  STRIPE
+  OTHER
+}
+
+enum InstructorStatus {
+  PROSPECT
+  AUDITING
+  APPROVED
+  ACTIVE
+  INACTIVE
+}
+
+enum SequenceTrigger {
+  NEW_LEAD
+  POST_COURSE
+  ANNUAL_REBOOKING
+  RE_ENGAGEMENT
+  PUBLIC_COURSE_PROMO
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum ApprovalStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  DENIED
+  EXPIRED
+}
+
+// ─── MODELS ───
+
+model Clinic {
+  id               String       @id @default(uuid())
+  name             String
+  type             ClinicType   @default(PRIVATE_PRACTICE)
+  address          String       @default("")
+  city             String
+  state            String
+  zip              String       @default("")
+  region           String       @default("")
+  phone            String       @default("")
+  website          String?
+  status           ClinicStatus @default(LEAD)
+  source           ClinicSource @default(OTHER)
+  estimatedSize    Int?
+  notes            String       @default("")
+  lastContactDate  DateTime?
+  nextFollowUpDate DateTime?
+  lifetimeRevenue  Decimal      @default(0)
+  tags             String[]     @default([])
+  latitude         Float?
+  longitude        Float?
+
+  contacts     Contact[]
+  courseEvents  CourseEvent[]
+  outreachLogs OutreachLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Contact {
+  id               String      @id @default(uuid())
+  clinicId         String
+  clinic           Clinic      @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  firstName        String
+  lastName         String
+  email            String      @default("")
+  phone            String?
+  role             ContactRole @default(OTHER)
+  isPrimaryContact Boolean     @default(false)
+  credentials      String?
+  notes            String      @default("")
+
+  outreachLogs OutreachLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Course {
+  id                   String       @id @default(uuid())
+  title                String
+  shortCode            String       @unique
+  description          String       @default("")
+  ceuHours             Int          @default(0)
+  targetAudience       String       @default("PTs, PTAs, ATCs")
+  format               CourseFormat @default(LIVE_PRIVATE)
+  maxAttendees         Int          @default(30)
+  defaultPrice         Decimal      @default(10000)
+  isActive             Boolean      @default(true)
+  materialsFolder      String?
+  version              String       @default("v1.0")
+  prerequisiteCourseId String?
+  learningObjectives   String[]     @default([])
+  schedule             Json?
+  bibliography         Json?
+  prerequisites        String       @default("")
+  instructionalLevel   String       @default("Intermediate to Advanced")
+
+  courseEvents    CourseEvent[]
+  materials      Material[]
+  courseApprovals CourseApproval[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CourseEvent {
+  id                    String      @id @default(uuid())
+  courseId              String
+  course               Course      @relation(fields: [courseId], references: [id])
+  clinicId             String
+  clinic               Clinic      @relation(fields: [clinicId], references: [id])
+  instructorId         String?
+  instructor           Instructor? @relation(fields: [instructorId], references: [id])
+  eventDate            DateTime
+  startTime            String      @default("08:00")
+  endTime              String      @default("16:00")
+  type                 EventType   @default(PRIVATE)
+  status               EventStatus @default(TENTATIVE)
+  priceCharged         Decimal     @default(0)
+  depositAmount        Decimal     @default(0)
+  depositPaidDate      DateTime?
+  totalRevenue         Decimal     @default(0)
+  attendeeCount        Int         @default(0)
+  hostIncentivePaid    Decimal     @default(0)
+  travelCost           Decimal     @default(0)
+  travelCoveredByClinic Boolean    @default(false)
+  feedbackScore        Decimal?
+  notes                String      @default("")
+  postEventFollowUpSent Boolean    @default(false)
+  rebookingPitched     Boolean     @default(false)
+  rebookedForNextYear  Boolean     @default(false)
+
+  attendees        Attendee[]
+  financialRecords FinancialRecord[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OutreachLog {
+  id                String            @id @default(uuid())
+  clinicId          String
+  clinic            Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  contactId         String?
+  contact           Contact?          @relation(fields: [contactId], references: [id])
+  date              DateTime          @default(now())
+  method            OutreachMethod    @default(EMAIL)
+  direction         OutreachDirection @default(OUTBOUND)
+  subject           String            @default("")
+  notes             String            @default("")
+  outcome           OutreachOutcome   @default(NO_RESPONSE)
+  followUpDate      DateTime?
+  followUpCompleted Boolean           @default(false)
+  emailTemplateUsed String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── PHASE 2 MODELS ───
+
+model Attendee {
+  id               String           @id @default(uuid())
+  courseEventId     String
+  courseEvent       CourseEvent      @relation(fields: [courseEventId], references: [id], onDelete: Cascade)
+  firstName        String
+  lastName         String
+  email            String           @default("")
+  credentials      String           @default("")
+  clinicId         String?
+  registrationType RegistrationType @default(PAID)
+  amountPaid       Decimal          @default(0)
+  ceuCertificateIssued Boolean      @default(false)
+  surveyCompleted  Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Material {
+  id         String       @id @default(uuid())
+  courseId   String?
+  course     Course?      @relation(fields: [courseId], references: [id])
+  title      String
+  type       MaterialType @default(OTHER)
+  fileUrl    String
+  fileSize   Int          @default(0)
+  mimeType   String       @default("")
+  version    String       @default("v1.0")
+  tags       String[]     @default([])
+  isTemplate Boolean      @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FinancialRecord {
+  id            String        @id @default(uuid())
+  courseEventId String?
+  courseEvent   CourseEvent?   @relation(fields: [courseEventId], references: [id])
+  type          FinancialType
+  amount        Decimal
+  date          DateTime      @default(now())
+  description   String        @default("")
+  category      String        @default("")
+  paymentMethod PaymentMethod @default(OTHER)
+  invoiceNumber String?
+  isPaid        Boolean       @default(false)
+  taxDeductible Boolean       @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── PHASE 3 MODELS ───
+
+model Instructor {
+  id                   String           @id @default(uuid())
+  firstName            String
+  lastName             String
+  email                String
+  phone                String           @default("")
+  credentials          String           @default("")
+  certifications       String[]         @default([])
+  status               InstructorStatus @default(PROSPECT)
+  payRate              Decimal          @default(2500)
+  nonCompeteExpiry     DateTime?
+  w9OnFile             Boolean          @default(false)
+  insuranceVerified    Boolean          @default(false)
+  totalCoursesDelivered Int             @default(0)
+  avgFeedbackScore     Decimal?
+  notes                String           @default("")
+
+  courseEvents CourseEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmailSequence {
+  id      String          @id @default(uuid())
+  name    String
+  trigger SequenceTrigger
+  steps   Json            @default("[]")
+
+  enrollments SequenceEnrollment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SequenceEnrollment {
+  id          String           @id @default(uuid())
+  sequenceId  String
+  sequence    EmailSequence    @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  clinicId    String
+  startedAt   DateTime         @default(now())
+  currentStep Int              @default(0)
+  status      EnrollmentStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── CEU COMPLIANCE ───
+
+model StateRequirement {
+  id                String   @id @default(uuid())
+  stateCode         String   @unique // e.g. "TN", "TX", "CA"
+  stateName         String   // e.g. "Tennessee"
+  boardName         String   @default("") // e.g. "Tennessee Board of Physical Therapy"
+  boardUrl          String   @default("") // link to board website
+  requiresPreApproval Boolean @default(false)
+  acceptsOtherStates Boolean @default(false) // accepts approvals from other state boards
+  acceptedBodies    String[] @default([]) // e.g. ["APTA", "BOC", "TX-PT"]
+  ceuRequiredPerCycle Int    @default(0) // total CEUs required per renewal cycle
+  renewalCycleYears Int      @default(2)
+  applicationFee    Decimal  @default(0)
+  applicationUrl    String   @default("") // direct link to submit application
+  notes             String   @default("")
+  ptLicenseType     String   @default("PT") // PT, DC, ATC, etc.
+
+  approvals CourseApproval[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CourseApproval {
+  id                 String         @id @default(uuid())
+  courseId            String
+  course             Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  stateRequirementId String
+  stateRequirement   StateRequirement @relation(fields: [stateRequirementId], references: [id], onDelete: Cascade)
+  status             ApprovalStatus @default(NOT_STARTED)
+  providerNumber     String         @default("") // assigned provider/approval number
+  approvedCeuHours   Int            @default(0)
+  applicationDate    DateTime?
+  approvalDate       DateTime?
+  expirationDate     DateTime?
+  renewalDate        DateTime?
+  cost               Decimal        @default(0)
+  notes              String         @default("")
+  documentUrl        String         @default("") // link to approval letter/cert
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([courseId, stateRequirementId])
+}

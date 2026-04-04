@@ -1,0 +1,15 @@
+import { prisma } from "@/lib/db";
+import { NextResponse } from "next/server";
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const body = await req.json();
+  const material = await prisma.material.update({ where: { id }, data: body });
+  return NextResponse.json(material);
+}
+
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  await prisma.material.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}

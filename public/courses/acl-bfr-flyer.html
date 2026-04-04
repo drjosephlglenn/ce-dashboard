@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACL+BFR Mastery — SIDELINE CE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  @page {
+    size: letter;
+    margin: 0;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #231F20;
+    color: #D7D3CD;
+    width: 8.5in;
+    min-height: 11in;
+    margin: 0 auto;
+    padding: 0.5in 0.6in;
+    display: flex;
+    flex-direction: column;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 0.3in;
+  }
+
+  .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #8FBDA3;
+    margin-bottom: 6px;
+  }
+
+  .brand-line {
+    width: 40px;
+    height: 2px;
+    background: #8FBDA3;
+    margin: 0 auto 16px;
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: #D7D3CD;
+    line-height: 1.15;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: #B9B6AF;
+    font-weight: 300;
+    margin-bottom: 16px;
+  }
+
+  .meta-row {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(143, 189, 163, 0.12);
+    border: 1px solid rgba(143, 189, 163, 0.25);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #8FBDA3;
+  }
+
+  .meta-pill svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: #8FBDA3;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(143,189,163,0.3), transparent);
+    margin: 0.25in 0;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.3in;
+    margin-bottom: 0.25in;
+  }
+
+  .section-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #8FBDA3;
+    margin-bottom: 12px;
+  }
+
+  .highlight-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .highlight-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: rgba(44, 40, 40, 0.8);
+    border-radius: 8px;
+    padding: 12px;
+  }
+
+  .highlight-icon {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    background: rgba(143, 189, 163, 0.15);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8FBDA3;
+    font-size: 14px;
+  }
+
+  .highlight-text {
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: #D7D3CD;
+  }
+
+  .highlight-text strong {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 1px;
+  }
+
+  .highlight-text span {
+    color: #B9B6AF;
+    font-size: 10.5px;
+  }
+
+  .phases {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .phase {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .phase-timeline {
+    width: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  .phase-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #8FBDA3;
+    margin-top: 4px;
+    z-index: 1;
+  }
+
+  .phase-line {
+    width: 2px;
+    flex: 1;
+    background: rgba(143, 189, 163, 0.25);
+  }
+
+  .phase:last-child .phase-line {
+    background: transparent;
+  }
+
+  .phase-content {
+    padding: 0 0 16px 8px;
+    flex: 1;
+  }
+
+  .phase-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #D7D3CD;
+    margin-bottom: 2px;
+  }
+
+  .phase-time {
+    font-size: 10px;
+    color: #8FBDA3;
+    margin-bottom: 3px;
+  }
+
+  .phase-desc {
+    font-size: 10.5px;
+    color: #B9B6AF;
+    line-height: 1.4;
+  }
+
+  .audience-section {
+    margin-bottom: 0.2in;
+  }
+
+  .audience-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .audience-tag {
+    background: rgba(54, 49, 48, 0.9);
+    border: 1px solid rgba(215, 211, 205, 0.08);
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 11px;
+    color: #D7D3CD;
+  }
+
+  .footer {
+    margin-top: auto;
+    padding-top: 0.2in;
+    border-top: 1px solid rgba(143, 189, 163, 0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .footer-left {
+    flex: 1;
+  }
+
+  .footer-cta {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #D7D3CD;
+    margin-bottom: 4px;
+  }
+
+  .footer-contact {
+    font-size: 12px;
+    color: #8FBDA3;
+    margin-bottom: 2px;
+  }
+
+  .footer-prereq {
+    font-size: 9px;
+    color: #B9B6AF;
+    margin-top: 8px;
+    max-width: 4in;
+    line-height: 1.4;
+  }
+
+  .footer-right {
+    text-align: right;
+  }
+
+  .footer-brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: #D7D3CD;
+    letter-spacing: 0.05em;
+  }
+
+  .footer-by {
+    font-size: 10px;
+    color: #B9B6AF;
+  }
+
+  @media print {
+    html, body {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    body {
+      padding: 0.4in 0.5in;
+    }
+  }
+
+  /* Print instructions banner - hidden on screen for PDF generation */
+  .print-notice {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #8FBDA3;
+    color: #231F20;
+    text-align: center;
+    padding: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 100;
+  }
+  @media print { .print-notice { display: none; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">SIDELINE Continuing Education</div>
+  <div class="brand-line"></div>
+  <h1>ACL+BFR Mastery</h1>
+  <div class="subtitle">A Complete BFR Protocol for ACL Reconstruction — From Post-Op to Return-to-Sport</div>
+  <div class="meta-row">
+    <span class="meta-pill">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      8 CEU Hours
+    </span>
+    <span class="meta-pill">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Live, In-Person
+    </span>
+    <span class="meta-pill">
+      <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      5 Hands-On Labs
+    </span>
+    <span class="meta-pill">
+      <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      2022–2025 Evidence
+    </span>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="two-col">
+  <div>
+    <div class="section-label">Why This Course</div>
+    <div class="highlight-grid" style="grid-template-columns: 1fr;">
+      <div class="highlight-item">
+        <div class="highlight-icon">▸</div>
+        <div class="highlight-text">
+          <strong>More than half is hands-on</strong>
+          <span>5 labs with partner practice after every lecture module. No death-by-PowerPoint.</span>
+        </div>
+      </div>
+      <div class="highlight-item">
+        <div class="highlight-icon">▸</div>
+        <div class="highlight-text">
+          <strong>Skip the basics, maximize practice</strong>
+          <span>Pre-req video covers BFR fundamentals before course day so you hit the ground running.</span>
+        </div>
+      </div>
+      <div class="highlight-item">
+        <div class="highlight-icon">▸</div>
+        <div class="highlight-text">
+          <strong>A protocol ready for Monday morning</strong>
+          <span>Walk away with a complete phase-by-phase BFR protocol you can use immediately with your ACL patients.</span>
+        </div>
+      </div>
+      <div class="highlight-item">
+        <div class="highlight-icon">▸</div>
+        <div class="highlight-text">
+          <strong>RTS testing — practiced, not just taught</strong>
+          <span>Hop tests, strength testing, LSI calculation, landing quality. You'll perform and score every test.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-label">What You'll Cover</div>
+    <div class="phases">
+      <div class="phase">
+        <div class="phase-timeline"><div class="phase-dot"></div><div class="phase-line"></div></div>
+        <div class="phase-content">
+          <div class="phase-title">Early Post-Op BFR</div>
+          <div class="phase-time">Weeks 1–6</div>
+          <div class="phase-desc">Low-load BFR exercises to preserve quad mass during the window when your patient can't load heavy. This is where BFR makes the biggest difference.</div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-timeline"><div class="phase-dot"></div><div class="phase-line"></div></div>
+        <div class="phase-content">
+          <div class="phase-title">Mid Rehab + Progressive Loading</div>
+          <div class="phase-time">Weeks 6–16</div>
+          <div class="phase-desc">Combining BFR with progressive resistance. Closed chain exercises, single-leg work, and addressing persistent quad inhibition.</div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-timeline"><div class="phase-dot"></div><div class="phase-line"></div></div>
+        <div class="phase-content">
+          <div class="phase-title">Late Phase + Sport-Specific</div>
+          <div class="phase-time">4–9+ Months</div>
+          <div class="phase-desc">BFR paired with heavy loading, plyometric readiness, sport-specific progression, and knowing when to move past BFR entirely.</div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-timeline"><div class="phase-dot"></div></div>
+        <div class="phase-content">
+          <div class="phase-title">Return-to-Sport Testing</div>
+          <div class="phase-time">Clearance Criteria</div>
+          <div class="phase-desc">Objective clearance using strength testing, hop test batteries, landing quality, and psychological readiness. Every test practiced hands-on.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="audience-section">
+  <div class="section-label">Who It's For</div>
+  <div class="audience-tags">
+    <span class="audience-tag">Physical Therapists (PT, DPT)</span>
+    <span class="audience-tag">Physical Therapist Assistants (PTA)</span>
+    <span class="audience-tag">Athletic Trainers (ATC)</span>
+    <span class="audience-tag">Sports Rehab Professionals</span>
+    <span class="audience-tag">Level: Intermediate to Advanced</span>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="footer-left">
+    <div class="footer-cta">Interested in hosting this course at your clinic?</div>
+    <div class="footer-contact">dr.josephlglenn@gmail.com</div>
+    <div class="footer-prereq">Prerequisite: Current PT/PTA/ATC licensure or equivalent. Pre-req video module (~60 min) completed before course day.</div>
+  </div>
+  <div class="footer-right">
+    <div class="footer-brand">SIDELINE</div>
+    <div class="footer-by">Continuing Education</div>
+  </div>
+</div>
+
+<div class="print-notice">
+  When saving as PDF: Cmd+P → More Settings → check "Background graphics" for dark theme
+</div>
+
+</body>
+</html>
