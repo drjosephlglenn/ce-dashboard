@@ -61,6 +61,7 @@ const EMAIL_TEMPLATES = [
   { value: "post_course", label: "Post-Course Thank You" },
   { value: "bfr_l1_to_acl", label: "BFR L1 → ACL+BFR Upgrade Pitch (Directors)" },
   { value: "bfr_attendee_teaser", label: "BFR → ACL+BFR Teaser (Attendees)" },
+  { value: "pre_course_info", label: "Pre-Course Info (Send to Roster)" },
   { value: "rebooking_pitch", label: "Rebooking Pitch" },
   { value: "invoice_reminder", label: "Invoice Reminder" },
   { value: "custom", label: "Custom Email" },
@@ -138,6 +139,11 @@ export default function OutreachPage() {
         return {
           subject: `Enjoyed the BFR course? There's a next step`,
           body: `Hi ${contactName},\n\nI hope you've been doing well since the BFR Level 1 course at ${clinicName}. I really enjoyed working with your group and could tell everyone was hungry to learn.\n\nI wanted to reach out because I've built a new course that picks up right where L1 left off. It's called ACL+BFR Mastery, and it's all about taking BFR from "I know how to use this" to "I have an exact protocol for my ACL patients from day one through return-to-sport."\n\nThe course is 8 CEU hours, mostly hands-on, and covers the full rehab timeline with BFR programming at every phase. If you've been wondering how to fit BFR into your post-op protocols more consistently, this is exactly that.\n\nIf that sounds like something you'd be into, would you mind passing this along to whoever handles CE scheduling at your clinic? I'd love to come back and work with your team again.\n\nFeel free to reply with any questions. Always happy to chat.\n\nJoey Glenn, DC, CSCS\nSIDELINE Continuing Education`,
+        };
+      case "pre_course_info":
+        return {
+          subject: `What to Expect — Course on [Date]`,
+          body: `Hi ${contactName},\n\nLooking forward to seeing you at your upcoming course at ${clinicName}.\n\nHere's what you need to know:\n\nSchedule\n• Class begins at 8:00 AM and wraps up by 4:00 PM with breaks built in throughout the day.\n\nFor clinic directors/hosts: I'll arrive at 7:20 AM to get set up. If there's a specific room or anything I should know about the space, just shoot me a quick reply.\n\nMaterials\n• You'll receive a printed course manual at the start of class.\n• I teach off the attached slide deck — if you like to follow along or take notes digitally, feel free to print it out or bring a laptop/tablet. Totally optional.\n\nWhat to Wear\n• Dress comfortably — we'll be doing hands-on labs throughout the day, so athletic or clinical attire works best.\n\nSee you there!\n\nJoey Glenn, DC, CSCS\nSIDELINE Continuing Education\ndr.josephlglenn@gmail.com`,
         };
       case "rebooking_pitch":
         return {
