@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) throw new Error("Supabase not configured");
+  return createClient(url, key);
+}
 
 export async function POST(req: Request) {
   try {
+    const supabase = getSupabase();
     const formData = await req.formData();
     const file = formData.get("file") as File;
     if (!file) {
@@ -17,7 +20,6 @@ export async function POST(req: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Generate unique filename
     const ext = file.name.split(".").pop() || "bin";
     const timestamp = Date.now();
     const filename = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
@@ -35,7 +37,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Upload failed: " + error.message }, { status: 500 });
     }
 
-    // Get public URL
     const { data: urlData } = supabase.storage
       .from("materials")
       .getPublicUrl(data.path);
