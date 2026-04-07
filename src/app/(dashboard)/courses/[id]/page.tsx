@@ -18,7 +18,17 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { formatDate, formatCurrency } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface ScheduleItem {
   module: number | null;
@@ -184,7 +194,17 @@ export default function CourseDetailPage() {
       {activeTab === "schedule" && <ScheduleTab schedule={course.schedule} />}
       {activeTab === "objectives" && <ObjectivesTab objectives={objectives} />}
       {activeTab === "bibliography" && <BibliographyTab bibliography={course.bibliography} />}
-      {activeTab === "events" && <EventsTab events={course.courseEvents} />}
+      {activeTab === "events" && (
+        <EventsTab
+          events={course.courseEvents}
+          courseId={course.id}
+          onCreated={() =>
+            fetch(`/api/courses/${id}`)
+              .then((r) => r.json())
+              .then(setCourse)
+          }
+        />
+      )}
     </div>
   );
 }
@@ -495,11 +515,63 @@ function BibliographyTab({ bibliography }: { bibliography: BibEntry[] | null }) 
 
 function EventsTab({
   events,
+  courseId,
+  onCreated,
 }: {
   events: CourseDetail["courseEvents"];
+  courseId: string;
+  onCreated: () => void;
 }) {
   const formatLabel = (f: string) =>
     f.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const [open, setOpen] = useState(false);
+  const [clinics, setClinics] = useState<{ id: string; name: string; city: string; state: string }[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [eventType, setEventType] = useState<"PUBLIC" | "PRIVATE">("PUBLIC");
+
+  useEffect(() => {
+    fetch("/api/clinics").then((r) => r.json()).then(setClinics);
+  }, []);
+
+  async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setCreating(true);
+    const fd = new FormData(e.currentTarget);
+    const body: Record<string, unknown> = {
+      courseId,
+      clinicId: fd.get("clinicId"),
+      eventDate: fd.get("eventDate"),
+      startTime: fd.get("startTime") || "08:00",
+      endTime: fd.get("endTime") || "16:00",
+      type: eventType,
+      status: "TENTATIVE",
+    };
+
+    if (eventType === "PRIVATE") {
+      body.flatRate = parseFloat(fd.get("flatRate") as string) || 10000;
+    } else {
+      body.standardPrice = parseFloat(fd.get("standardPrice") as string) || 599;
+      body.earlyBirdPrice = parseFloat(fd.get("earlyBirdPrice") as string) || 499;
+      body.hostKickbackPerHead = parseFloat(fd.get("hostKickbackPerHead") as string) || 50;
+      body.minAttendees = parseInt(fd.get("minAttendees") as string) || 8;
+      body.maxAttendees = parseInt(fd.get("maxAttendees") as string) || 30;
+    }
+
+    const res = await fetch("/api/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setCreating(false);
+    if (res.ok) {
+      toast.success("Event scheduled");
+      setOpen(false);
+      onCreated();
+    } else {
+      toast.error("Failed to schedule event");
+    }
+  }
 
   return (
     <div>
@@ -510,9 +582,117 @@ function EventsTab({
         >
           Scheduled Events ({events.length})
         </h2>
-        <Button size="sm" className="bg-[#8FBDA3] text-[#231F20] hover:bg-[#8FBDA3]/90">
-          <CalendarPlus className="h-4 w-4 mr-2" /> Schedule Event
-        </Button>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger className="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium bg-[#8FBDA3] text-[#231F20] hover:bg-[#8FBDA3]/90 transition-colors">
+            <CalendarPlus className="h-4 w-4 mr-2" /> Schedule Event
+          </DialogTrigger>
+          <DialogContent className="bg-[#2C2828] border-[rgba(215,211,205,0.1)] text-[#D7D3CD] max-w-lg">
+            <DialogHeader>
+              <DialogTitle style={{ fontFamily: "var(--font-space-grotesk)" }}>Schedule Event</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreate} className="space-y-4">
+              {/* Type Toggle */}
+              <div className="space-y-2">
+                <Label className="text-[#B9B6AF]">Event Type</Label>
+                <div className="flex gap-2">
+                  {(["PUBLIC", "PRIVATE"] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setEventType(t)}
+                      className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors ${
+                        eventType === t
+                          ? "bg-[#8FBDA3] text-[#231F20]"
+                          : "bg-[#363130] text-[#B9B6AF] hover:text-[#D7D3CD]"
+                      }`}
+                    >
+                      {t === "PUBLIC" ? "Public" : "Private"}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-[#B9B6AF]">
+                  {eventType === "PUBLIC"
+                    ? "Open registration • $599/$499 early bird • $50 kickback to host • 1 free host seat"
+                    : "Closed to host clinic staff • $10,000 flat rate • Up to 30 attendees"}
+                </p>
+              </div>
+
+              {/* Clinic */}
+              <div className="space-y-2">
+                <Label className="text-[#B9B6AF]">Host Clinic *</Label>
+                <select
+                  name="clinicId"
+                  required
+                  className="w-full h-9 rounded-md bg-[#363130] border border-[rgba(215,211,205,0.1)] text-[#D7D3CD] px-3 text-sm"
+                >
+                  <option value="">Select clinic...</option>
+                  {clinics.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} — {c.city}, {c.state}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date & Time */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-[#B9B6AF]">Date *</Label>
+                  <Input name="eventDate" type="date" required className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[#B9B6AF]">Start</Label>
+                  <Input name="startTime" type="time" defaultValue="08:00" className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[#B9B6AF]">End</Label>
+                  <Input name="endTime" type="time" defaultValue="16:00" className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]" />
+                </div>
+              </div>
+
+              {/* Pricing Fields */}
+              {eventType === "PUBLIC" ? (
+                <div className="space-y-3 rounded-lg bg-[#363130]/50 p-3">
+                  <p className="text-[10px] tracking-[0.16em] uppercase text-[#B9B6AF]">Public Pricing</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-[#B9B6AF] text-xs">Standard Price</Label>
+                      <Input name="standardPrice" type="number" step="0.01" defaultValue="599" className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD] h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[#B9B6AF] text-xs">Early Bird Price</Label>
+                      <Input name="earlyBirdPrice" type="number" step="0.01" defaultValue="499" className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD] h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[#B9B6AF] text-xs">Host Kickback / Head</Label>
+                      <Input name="hostKickbackPerHead" type="number" step="0.01" defaultValue="50" className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD] h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[#B9B6AF] text-xs">Min Attendees</Label>
+                      <Input name="minAttendees" type="number" defaultValue="8" className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD] h-8 text-sm" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[#B9B6AF] text-xs">Max Attendees</Label>
+                    <Input name="maxAttendees" type="number" defaultValue="30" className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD] h-8 text-sm" />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 rounded-lg bg-[#363130]/50 p-3">
+                  <p className="text-[10px] tracking-[0.16em] uppercase text-[#B9B6AF]">Private Pricing</p>
+                  <div className="space-y-1">
+                    <Label className="text-[#B9B6AF] text-xs">Flat Rate</Label>
+                    <Input name="flatRate" type="number" step="0.01" defaultValue="10000" className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD] h-8 text-sm" />
+                  </div>
+                </div>
+              )}
+
+              <Button type="submit" disabled={creating} className="w-full bg-[#8FBDA3] text-[#231F20] hover:bg-[#8FBDA3]/90">
+                {creating ? "Scheduling..." : "Schedule Event"}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
       {events.length === 0 ? (
         <Card className="bg-[#2C2828] border-[rgba(215,211,205,0.07)]">
