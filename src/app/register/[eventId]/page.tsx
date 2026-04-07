@@ -11,12 +11,20 @@ interface EventInfo {
   ceuHours: number;
   date: string;
   time: string;
+  type: string;
   clinicName: string;
   clinicCity: string;
   clinicState: string;
   totalSeats: number;
   seatsRemaining: number;
   isOpen: boolean;
+  // Pricing
+  standardPrice: number;
+  earlyBirdPrice: number;
+  currentPrice: number;
+  isEarlyBird: boolean;
+  earlyBirdDeadline: string;
+  daysUntilEvent: number;
 }
 
 export default function PublicRegistrationPage() {
@@ -44,11 +52,27 @@ export default function PublicRegistrationPage() {
         }
         if (!res.ok) throw new Error("Failed to fetch");
         const data = await res.json();
-        if (!data.isOpen) {
-          setNotFound(true);
-          return;
-        }
-        setEvent(data);
+        setEvent({
+          id: data.id,
+          courseTitle: data.course.title,
+          courseDescription: data.course.description,
+          ceuHours: data.course.ceuHours,
+          date: data.eventDate,
+          time: `${data.startTime} – ${data.endTime}`,
+          type: data.type,
+          clinicName: data.clinic.name,
+          clinicCity: data.clinic.city,
+          clinicState: data.clinic.state,
+          totalSeats: data.maxAttendees,
+          seatsRemaining: data.maxAttendees - data.attendeeCount,
+          isOpen: true,
+          standardPrice: data.standardPrice,
+          earlyBirdPrice: data.earlyBirdPrice,
+          currentPrice: data.currentPrice,
+          isEarlyBird: data.isEarlyBird,
+          earlyBirdDeadline: data.earlyBirdDeadline,
+          daysUntilEvent: data.daysUntilEvent,
+        });
       } catch {
         setNotFound(true);
       } finally {
@@ -176,6 +200,33 @@ export default function PublicRegistrationPage() {
                   {event!.seatsRemaining} of {event!.totalSeats} seats remaining
                 </span>
               </div>
+
+              {/* Pricing for Public Events */}
+              {event!.type === "PUBLIC" && (
+                <div className="mt-4 rounded-lg border border-[#E5E3DE] p-4">
+                  <div className="flex items-baseline justify-between">
+                    <div>
+                      {event!.isEarlyBird ? (
+                        <>
+                          <span className="text-2xl font-bold text-[#231F20]">${event!.earlyBirdPrice}</span>
+                          <span className="ml-2 text-sm text-[#B9B6AF] line-through">${event!.standardPrice}</span>
+                          <span className="ml-2 inline-block rounded-full bg-[#8FBDA3]/20 px-2 py-0.5 text-xs font-semibold text-[#8FBDA3]">
+                            Early Bird
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-2xl font-bold text-[#231F20]">${event!.standardPrice}</span>
+                      )}
+                      <span className="ml-1 text-sm text-[#B9B6AF]">per person</span>
+                    </div>
+                  </div>
+                  {event!.isEarlyBird && (
+                    <p className="mt-2 text-xs text-[#B9B6AF]">
+                      Early bird pricing ends {new Date(event!.earlyBirdDeadline).toLocaleDateString()} — save ${event!.standardPrice - event!.earlyBirdPrice}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Registration Form */}

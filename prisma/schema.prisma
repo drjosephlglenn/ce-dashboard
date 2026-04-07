@@ -259,6 +259,15 @@ model CourseEvent {
   hostIncentivePaid    Decimal     @default(0)
   travelCost           Decimal     @default(0)
   travelCoveredByClinic Boolean    @default(false)
+  // Public course pricing
+  standardPrice        Decimal     @default(599)
+  earlyBirdPrice       Decimal     @default(499)
+  earlyBirdCutoffDays  Int         @default(30)
+  hostKickbackPerHead  Decimal     @default(50)
+  minAttendees         Int         @default(8)
+  maxAttendees         Int         @default(30)
+  // Private course pricing
+  flatRate             Decimal     @default(10000)
   feedbackScore        Decimal?
   notes                String      @default("")
   postEventFollowUpSent Boolean    @default(false)

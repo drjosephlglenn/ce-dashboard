@@ -37,6 +37,19 @@ export async function GET(
       return NextResponse.json({ error: "Event not available for registration" }, { status: 404 });
     }
 
+    // Calculate pricing for public events
+    const now = new Date();
+    const eventDate = new Date(event.eventDate);
+    const daysUntilEvent = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const isEarlyBird = daysUntilEvent > event.earlyBirdCutoffDays;
+    const currentPrice = event.type === "PUBLIC"
+      ? (isEarlyBird ? Number(event.earlyBirdPrice) : Number(event.standardPrice))
+      : 0;
+
+    // Calculate early bird deadline date
+    const earlyBirdDeadline = new Date(eventDate);
+    earlyBirdDeadline.setDate(earlyBirdDeadline.getDate() - event.earlyBirdCutoffDays);
+
     return NextResponse.json({
       id: event.id,
       eventDate: event.eventDate,
@@ -44,10 +57,17 @@ export async function GET(
       endTime: event.endTime,
       type: event.type,
       status: event.status,
-      maxAttendees: event.course.maxAttendees,
+      maxAttendees: event.maxAttendees,
       attendeeCount: event.attendeeCount,
       course: event.course,
       clinic: event.clinic,
+      // Pricing info
+      standardPrice: Number(event.standardPrice),
+      earlyBirdPrice: Number(event.earlyBirdPrice),
+      currentPrice,
+      isEarlyBird,
+      earlyBirdDeadline: earlyBirdDeadline.toISOString(),
+      daysUntilEvent,
     });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch event" }, { status: 500 });
@@ -72,7 +92,6 @@ export async function POST(
 
     const event = await prisma.courseEvent.findUnique({
       where: { id: eventId },
-      include: { course: { select: { maxAttendees: true } } },
     });
 
     if (!event) {
@@ -83,8 +102,19 @@ export async function POST(
       return NextResponse.json({ error: "Event not available for registration" }, { status: 400 });
     }
 
-    if (event.course.maxAttendees && event.attendeeCount >= event.course.maxAttendees) {
+    if (event.attendeeCount >= event.maxAttendees) {
       return NextResponse.json({ error: "Event is full" }, { status: 400 });
+    }
+
+    // Calculate price for public events
+    let amountPaid = 0;
+    let regType = registrationType || "PAID";
+    if (event.type === "PUBLIC" && regType === "PAID") {
+      const now = new Date();
+      const eventDate = new Date(event.eventDate);
+      const daysUntilEvent = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const isEarlyBird = daysUntilEvent > event.earlyBirdCutoffDays;
+      amountPaid = isEarlyBird ? Number(event.earlyBirdPrice) : Number(event.standardPrice);
     }
 
     const [attendee] = await prisma.$transaction([
@@ -93,8 +123,9 @@ export async function POST(
           firstName,
           lastName,
           email,
-          credentials,
-          registrationType,
+          credentials: credentials || "",
+          registrationType: regType,
+          amountPaid,
           courseEventId: eventId,
         },
       }),

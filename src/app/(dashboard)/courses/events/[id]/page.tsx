@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Award, Check, FileText, Mail, Send, UserPlus, Users } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Award, Check, DollarSign, FileText, Mail, Send, UserPlus, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -40,6 +40,14 @@ interface EventDetail {
   rebookedForNextYear: boolean;
   course: { id: string; title: string; shortCode: string };
   clinic: { id: string; name: string; city: string; state: string };
+  // Pricing fields
+  standardPrice: string;
+  earlyBirdPrice: string;
+  earlyBirdCutoffDays: number;
+  hostKickbackPerHead: string;
+  minAttendees: number;
+  maxAttendees: number;
+  flatRate: string;
 }
 
 interface LinkedFinancial {
@@ -149,8 +157,47 @@ export default function EventDetailPage() {
               <div><p className="text-[#B9B6AF] text-xs">Date</p><p className="text-[#D7D3CD]">{formatDate(event.eventDate)}</p></div>
               <div><p className="text-[#B9B6AF] text-xs">Time</p><p className="text-[#D7D3CD]">{event.startTime} – {event.endTime}</p></div>
               <div><p className="text-[#B9B6AF] text-xs">Type</p><Badge className="bg-[#363130] text-[#D7D3CD] border-0">{event.type}</Badge></div>
-              <div><p className="text-[#B9B6AF] text-xs">Attendees</p><p className="text-[#D7D3CD]">{event.attendeeCount}</p></div>
+              <div><p className="text-[#B9B6AF] text-xs">Attendees</p><p className="text-[#D7D3CD]">{event.attendeeCount} / {event.maxAttendees}</p></div>
             </div>
+
+            {/* Pricing Model */}
+            <Separator className="bg-[rgba(215,211,205,0.07)]" />
+            {event.type === "PUBLIC" ? (
+              <div className="space-y-2">
+                <p className="text-[10px] tracking-[0.16em] uppercase text-[#B9B6AF]">Public Pricing</p>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><p className="text-[#B9B6AF] text-xs">Standard</p><p className="text-[#D7D3CD]">{formatCurrency(event.standardPrice)}/person</p></div>
+                  <div><p className="text-[#B9B6AF] text-xs">Early Bird</p><p className="text-[#8FBDA3]">{formatCurrency(event.earlyBirdPrice)}/person</p></div>
+                  <div><p className="text-[#B9B6AF] text-xs">Early Bird Cutoff</p><p className="text-[#D7D3CD]">{event.earlyBirdCutoffDays} days before</p></div>
+                  <div><p className="text-[#B9B6AF] text-xs">Host Kickback</p><p className="text-[#D7D3CD]">{formatCurrency(event.hostKickbackPerHead)}/paid registrant</p></div>
+                </div>
+                <p className="text-xs text-[#B9B6AF]">+ 1 free seat for host clinic</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[10px] tracking-[0.16em] uppercase text-[#B9B6AF]">Private Pricing</p>
+                <div className="text-sm">
+                  <p className="text-[#B9B6AF] text-xs">Flat Rate</p>
+                  <p className="text-[#D7D3CD] text-lg font-semibold">{formatCurrency(event.flatRate)}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Minimum Not Met Warning */}
+            {event.type === "PUBLIC" && event.attendeeCount < event.minAttendees && event.status !== "COMPLETED" && event.status !== "CANCELLED" && (() => {
+              const daysOut = Math.ceil((new Date(event.eventDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+              return daysOut <= event.earlyBirdCutoffDays;
+            })() && (
+              <div className="flex items-start gap-2 rounded-lg bg-yellow-500/10 px-3 py-2">
+                <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-yellow-500">Below Minimum</p>
+                  <p className="text-[10px] text-yellow-500/80">
+                    {event.attendeeCount} of {event.minAttendees} minimum registrants. Consider cancelling or pushing registration.
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -184,6 +231,21 @@ export default function EventDetailPage() {
                       </span>
                     </div>
                   ))}
+                </>
+              )}
+              {/* Host Kickback Estimate for Public Events */}
+              {event.type === "PUBLIC" && event.attendeeCount > 0 && (
+                <>
+                  <Separator className="bg-[rgba(215,211,205,0.07)]" />
+                  <p className="text-[10px] tracking-[0.16em] uppercase text-[#B9B6AF]">Host Kickback Estimate</p>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#B9B6AF]">
+                      {Math.max(0, event.attendeeCount - 1)} paid × {formatCurrency(event.hostKickbackPerHead)}
+                    </span>
+                    <span className="text-red-400">
+                      -{formatCurrency(Math.max(0, event.attendeeCount - 1) * Number(event.hostKickbackPerHead))}
+                    </span>
+                  </div>
                 </>
               )}
               <Separator className="bg-[rgba(215,211,205,0.07)]" />
