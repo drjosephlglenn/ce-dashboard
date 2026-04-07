@@ -108,10 +108,10 @@ export default function NewClinicPage() {
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="PT">Physical Therapy</SelectItem>
-                <SelectItem value="CHIRO">Chiropractic</SelectItem>
-                <SelectItem value="ORTHO">Orthopedic</SelectItem>
-                <SelectItem value="SPORTS_MED">Sports Medicine</SelectItem>
+                <SelectItem value="PRIVATE_PRACTICE">Private Practice</SelectItem>
+                <SelectItem value="HOSPITAL_SYSTEM">Hospital System</SelectItem>
+                <SelectItem value="OUTPATIENT">Outpatient</SelectItem>
+                <SelectItem value="SNF">SNF</SelectItem>
                 <SelectItem value="OTHER">Other</SelectItem>
               </SelectContent>
             </Select>
@@ -123,11 +123,11 @@ export default function NewClinicPage() {
                 <SelectValue placeholder="Select source" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="EXISTING_NETWORK">Existing Network</SelectItem>
                 <SelectItem value="REFERRAL">Referral</SelectItem>
                 <SelectItem value="COLD_OUTREACH">Cold Outreach</SelectItem>
                 <SelectItem value="CONFERENCE">Conference</SelectItem>
-                <SelectItem value="WEBSITE">Website</SelectItem>
-                <SelectItem value="SOCIAL_MEDIA">Social Media</SelectItem>
+                <SelectItem value="INBOUND">Inbound</SelectItem>
                 <SelectItem value="OTHER">Other</SelectItem>
               </SelectContent>
             </Select>

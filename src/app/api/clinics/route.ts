@@ -45,21 +45,24 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const clinic = await prisma.clinic.create({
-      data: {
-        name: body.name,
-        city: body.city,
-        state: body.state,
-        type: body.type || null,
-        source: body.source || null,
-        phone: body.phone || null,
-        website: body.website || null,
-        estimatedSize: body.estimatedSize || null,
-        notes: body.notes || null,
-        status: body.status || "LEAD",
-        tags: body.tags || [],
-      },
-    });
+    const data: Record<string, unknown> = {
+      name: body.name,
+      city: body.city,
+      state: body.state,
+      status: body.status || "LEAD",
+      tags: body.tags || [],
+    };
+    if (body.type) data.type = body.type;
+    if (body.source) data.source = body.source;
+    if (body.phone) data.phone = body.phone;
+    if (body.website) data.website = body.website;
+    if (body.notes) data.notes = body.notes;
+    if (body.estimatedSize) {
+      const parsed = parseInt(body.estimatedSize, 10);
+      if (!isNaN(parsed)) data.estimatedSize = parsed;
+    }
+
+    const clinic = await prisma.clinic.create({ data });
 
     return NextResponse.json(clinic, { status: 201 });
   } catch (error) {
