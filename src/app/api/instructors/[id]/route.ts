@@ -24,7 +24,8 @@ export async function GET(
     }
     return NextResponse.json(instructor);
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch instructor" }, { status: 500 });
+    console.error("GET /api/instructors/[id] error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -35,13 +36,19 @@ export async function PATCH(
   const { id } = await params;
   try {
     const body = await req.json();
+
+    if (!body || Object.keys(body).length === 0) {
+      return NextResponse.json({ error: "Request body is required" }, { status: 400 });
+    }
+
     const instructor = await prisma.instructor.update({
       where: { id },
       data: body,
     });
     return NextResponse.json(instructor);
   } catch (error) {
-    return NextResponse.json({ error: "Failed to update instructor" }, { status: 500 });
+    console.error("PATCH /api/instructors/[id] error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -54,6 +61,7 @@ export async function DELETE(
     await prisma.instructor.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to delete instructor" }, { status: 500 });
+    console.error("DELETE /api/instructors/[id] error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

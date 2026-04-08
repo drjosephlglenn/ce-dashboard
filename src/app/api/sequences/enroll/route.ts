@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(enrollment, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to enroll in sequence" }, { status: 500 });
+    console.error("POST /api/sequences/enroll error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

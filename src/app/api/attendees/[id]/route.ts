@@ -12,6 +12,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const attendee = await prisma.attendee.findUnique({ where: { id } });
+
+  if (attendee) {
+    // Remove associated financial record for this registration
+    await prisma.financialRecord.deleteMany({
+      where: {
+        courseEventId: attendee.courseEventId,
+        description: `Registration: ${attendee.firstName} ${attendee.lastName}`,
+      },
+    });
+  }
+
   await prisma.attendee.delete({ where: { id } });
 
   // Update count

@@ -111,6 +111,7 @@ export async function GET() {
       totalAttendees,
     });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch analytics" }, { status: 500 });
+    console.error("GET /api/analytics error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

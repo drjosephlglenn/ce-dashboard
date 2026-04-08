@@ -8,13 +8,19 @@ export async function PATCH(
   const { id } = await params;
   try {
     const body = await req.json();
+
+    if (!body || Object.keys(body).length === 0) {
+      return NextResponse.json({ error: "Request body is required" }, { status: 400 });
+    }
+
     const sequence = await prisma.emailSequence.update({
       where: { id },
       data: body,
     });
     return NextResponse.json(sequence);
   } catch (error) {
-    return NextResponse.json({ error: "Failed to update sequence" }, { status: 500 });
+    console.error("PATCH /api/sequences/[id] error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -28,6 +34,7 @@ export async function DELETE(
     await prisma.emailSequence.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to delete sequence" }, { status: 500 });
+    console.error("DELETE /api/sequences/[id] error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

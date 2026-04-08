@@ -21,13 +21,43 @@ export async function GET(req: Request) {
       ];
     }
 
+    const limitParam = searchParams.get("limit");
+    const cursor = searchParams.get("cursor");
+
+    const include = {
+      _count: {
+        select: { contacts: true },
+      },
+    };
+
+    if (limitParam) {
+      const limit = Math.min(parseInt(limitParam) || 50, 200);
+      const queryOptions: any = {
+        take: limit + 1,
+        where,
+        include,
+        orderBy: { updatedAt: "desc" },
+      };
+
+      if (cursor) {
+        queryOptions.skip = 1;
+        queryOptions.cursor = { id: cursor };
+      }
+
+      const items = await prisma.clinic.findMany(queryOptions);
+      const hasMore = items.length > limit;
+      if (hasMore) items.pop();
+
+      return NextResponse.json({
+        data: items,
+        nextCursor: hasMore ? items[items.length - 1].id : null,
+        hasMore,
+      });
+    }
+
     const clinics = await prisma.clinic.findMany({
       where,
-      include: {
-        _count: {
-          select: { contacts: true },
-        },
-      },
+      include,
       orderBy: { updatedAt: "desc" },
     });
 

@@ -23,9 +23,39 @@ export async function GET(req: Request) {
     where.followUpCompleted = false;
   }
 
+  const limitParam = searchParams.get("limit");
+  const cursor = searchParams.get("cursor");
+
+  const include = { clinic: true, contact: true };
+
+  if (limitParam) {
+    const limit = Math.min(parseInt(limitParam) || 50, 200);
+    const queryOptions: any = {
+      take: limit + 1,
+      where,
+      include,
+      orderBy: { date: "desc" },
+    };
+
+    if (cursor) {
+      queryOptions.skip = 1;
+      queryOptions.cursor = { id: cursor };
+    }
+
+    const items = await prisma.outreachLog.findMany(queryOptions);
+    const hasMore = items.length > limit;
+    if (hasMore) items.pop();
+
+    return NextResponse.json({
+      data: items,
+      nextCursor: hasMore ? items[items.length - 1].id : null,
+      hasMore,
+    });
+  }
+
   const logs = await prisma.outreachLog.findMany({
     where,
-    include: { clinic: true, contact: true },
+    include,
     orderBy: { date: "desc" },
   });
   return NextResponse.json(logs);

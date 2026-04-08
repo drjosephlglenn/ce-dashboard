@@ -117,7 +117,7 @@ export async function POST(
       amountPaid = isEarlyBird ? Number(event.earlyBirdPrice) : Number(event.standardPrice);
     }
 
-    const [attendee] = await prisma.$transaction([
+    const transactionOps: any[] = [
       prisma.attendee.create({
         data: {
           firstName,
@@ -133,7 +133,26 @@ export async function POST(
         where: { id: eventId },
         data: { attendeeCount: { increment: 1 } },
       }),
-    ]);
+    ];
+
+    // Auto-create financial record for paid public registrations
+    if (event.type === "PUBLIC" && regType === "PAID" && amountPaid > 0) {
+      transactionOps.push(
+        prisma.financialRecord.create({
+          data: {
+            type: "COURSE_REVENUE",
+            amount: amountPaid,
+            date: new Date(),
+            description: `Registration: ${firstName} ${lastName}`,
+            courseEventId: eventId,
+            paymentMethod: "STRIPE",
+            isPaid: false,
+          },
+        })
+      );
+    }
+
+    const [attendee] = await prisma.$transaction(transactionOps);
 
     return NextResponse.json({ success: true, id: attendee.id }, { status: 201 });
   } catch (error) {
