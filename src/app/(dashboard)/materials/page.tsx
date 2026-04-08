@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { FolderOpen, Upload, FileText, Image, Film, Presentation, File, Search, Plus } from "lucide-react";
+import { FolderOpen, Upload, FileText, Image, Film, Presentation, File, Search, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +69,7 @@ export default function MaterialsPage() {
   const [filterCourse, setFilterCourse] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<MaterialItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function fetchMaterials() {
@@ -137,6 +138,17 @@ export default function MaterialsPage() {
       fetchMaterials();
     } else {
       toast.error("Failed to save material");
+    }
+  }
+
+  async function handleDelete(id: string) {
+    const res = await fetch(`/api/materials/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Material deleted");
+      setDeleteTarget(null);
+      fetchMaterials();
+    } else {
+      toast.error("Failed to delete material");
     }
   }
 
@@ -264,30 +276,34 @@ export default function MaterialsPage() {
                 {items.map((m) => {
                   const IconComp = TYPE_ICONS[m.type] || File;
                   return (
-                    <a key={m.id} href={m.fileUrl} target="_blank" rel="noopener noreferrer">
-                      <Card className="bg-[#2C2828] border-[rgba(215,211,205,0.07)] hover:border-[#8FBDA3]/30 transition-colors cursor-pointer">
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-3">
-                            <div className="p-2 rounded-lg bg-[#363130]">
-                              <IconComp className="h-5 w-5 text-[#8FBDA3]" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-[#D7D3CD] truncate">{m.title}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge className="bg-[#363130] text-[#B9B6AF] border-0 text-[9px]">{m.type.replace(/_/g, " ")}</Badge>
-                                <span className="text-[10px] text-[#B9B6AF]">{m.version}</span>
-                              </div>
-                              <p className="text-[10px] text-[#B9B6AF]/60 mt-1">
-                                {formatFileSize(m.fileSize)} &middot; {formatDate(m.createdAt)}
-                              </p>
-                            </div>
-                            {m.isTemplate && (
-                              <Badge className="bg-[#8FBDA3]/20 text-[#8FBDA3] border-0 text-[9px]">Template</Badge>
-                            )}
+                    <Card key={m.id} className="bg-[#2C2828] border-[rgba(215,211,205,0.07)] hover:border-[#8FBDA3]/30 transition-colors group relative">
+                      <CardContent className="p-4">
+                        <a href={m.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 cursor-pointer">
+                          <div className="p-2 rounded-lg bg-[#363130]">
+                            <IconComp className="h-5 w-5 text-[#8FBDA3]" />
                           </div>
-                        </CardContent>
-                      </Card>
-                    </a>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-[#D7D3CD] truncate">{m.title}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge className="bg-[#363130] text-[#B9B6AF] border-0 text-[9px]">{m.type.replace(/_/g, " ")}</Badge>
+                              <span className="text-[10px] text-[#B9B6AF]">{m.version}</span>
+                            </div>
+                            <p className="text-[10px] text-[#B9B6AF]/60 mt-1">
+                              {formatFileSize(m.fileSize)} &middot; {formatDate(m.createdAt)}
+                            </p>
+                          </div>
+                          {m.isTemplate && (
+                            <Badge className="bg-[#8FBDA3]/20 text-[#8FBDA3] border-0 text-[9px]">Template</Badge>
+                          )}
+                        </a>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(m); }}
+                          className="absolute top-3 right-3 p-1.5 rounded-md text-[#B9B6AF] opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-400 transition-all"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </CardContent>
+                    </Card>
                   );
                 })}
               </div>
@@ -295,6 +311,26 @@ export default function MaterialsPage() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="bg-[#2C2828] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]">
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: "var(--font-space-grotesk)" }}>Delete Material</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-[#B9B6AF]">
+            Delete {deleteTarget?.title ? `"${deleteTarget.title}"` : "this material"}? This cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)} className="text-[#B9B6AF]">
+              Cancel
+            </Button>
+            <Button onClick={() => deleteTarget && handleDelete(deleteTarget.id)} className="bg-red-600 hover:bg-red-700 text-white">
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, Award, Check, DollarSign, FileText, Mail, Send, UserPlus, Users } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Award, Check, Copy, DollarSign, FileText, Mail, Pencil, Send, Trash2, UserCheck, UserPlus, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -40,6 +40,7 @@ interface EventDetail {
   rebookedForNextYear: boolean;
   course: { id: string; title: string; shortCode: string };
   clinic: { id: string; name: string; city: string; state: string };
+  instructor: { id: string; firstName: string; lastName: string; credentials: string } | null;
   // Pricing fields
   standardPrice: string;
   earlyBirdPrice: string;
@@ -59,8 +60,16 @@ interface LinkedFinancial {
   paymentMethod: string;
 }
 
+interface Instructor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  credentials: string;
+}
+
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [linkedFinancials, setLinkedFinancials] = useState<LinkedFinancial[]>([]);
 
@@ -86,9 +95,33 @@ export default function EventDetailPage() {
     toast.success("Updated");
   }
 
+  async function handleCopyRegistrationLink() {
+    const url = `${window.location.origin}/register/${event!.id}`;
+    await navigator.clipboard.writeText(url);
+    toast.success("Registration link copied!");
+  }
+
+  async function handleCancelEvent() {
+    if (!confirm("Cancel this event? Attendees will not be automatically notified.")) return;
+    await updateField({ status: "CANCELLED" });
+  }
+
+  async function handleDeleteEvent() {
+    if (!confirm("Permanently delete this event and all attendee records? This cannot be undone.")) return;
+    const res = await fetch(`/api/events/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Event deleted");
+      router.push(`/courses/${event!.course.id}`);
+    } else {
+      toast.error("Failed to delete event");
+    }
+  }
+
   if (!event) return <div className="text-[#B9B6AF]">Loading...</div>;
 
   const currentStep = STATUS_STEPS.indexOf(event.status);
+  const showRegistrationLink = event.status === "CONFIRMED" || event.status === "DEPOSIT_RECEIVED";
+  const showCancelDelete = event.status !== "COMPLETED" && event.status !== "CANCELLED";
 
   return (
     <div className="space-y-6">
@@ -96,16 +129,29 @@ export default function EventDetailPage() {
         <ArrowLeft className="h-4 w-4" /> Back to {event.course.title}
       </Link>
 
-      <div>
-        <h1 className="text-2xl font-bold text-[#D7D3CD]" style={{ fontFamily: "var(--font-space-grotesk)" }}>
-          {event.course.title}
-        </h1>
-        <p className="text-sm text-[#B9B6AF] mt-1">
-          {formatDate(event.eventDate)} at{" "}
-          <Link href={`/clinics/${event.clinic.id}`} className="text-[#8FBDA3] hover:underline">
-            {event.clinic.name}
-          </Link>
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-[#D7D3CD]" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+            {event.course.title}
+          </h1>
+          <p className="text-sm text-[#B9B6AF] mt-1">
+            {formatDate(event.eventDate)} at{" "}
+            <Link href={`/clinics/${event.clinic.id}`} className="text-[#8FBDA3] hover:underline">
+              {event.clinic.name}
+            </Link>
+          </p>
+        </div>
+        {showRegistrationLink && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCopyRegistrationLink}
+            className="border-[rgba(215,211,205,0.15)] text-[#D7D3CD] hover:bg-[#363130]"
+          >
+            <Copy className="h-3.5 w-3.5 mr-1.5" />
+            Copy Registration Link
+          </Button>
+        )}
       </div>
 
       {/* Status Progress */}
@@ -158,6 +204,21 @@ export default function EventDetailPage() {
               <div><p className="text-[#B9B6AF] text-xs">Time</p><p className="text-[#D7D3CD]">{event.startTime} – {event.endTime}</p></div>
               <div><p className="text-[#B9B6AF] text-xs">Type</p><Badge className="bg-[#363130] text-[#D7D3CD] border-0">{event.type}</Badge></div>
               <div><p className="text-[#B9B6AF] text-xs">Attendees</p><p className="text-[#D7D3CD]">{event.attendeeCount} / {event.maxAttendees}</p></div>
+              <div className="col-span-2">
+                <p className="text-[#B9B6AF] text-xs">Instructor</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-[#D7D3CD]">
+                    {event.instructor
+                      ? `${event.instructor.firstName} ${event.instructor.lastName}${event.instructor.credentials ? `, ${event.instructor.credentials}` : ""}`
+                      : "Not assigned"}
+                  </p>
+                  <InstructorAssignDialog
+                    eventId={event.id}
+                    currentInstructorId={event.instructor?.id ?? null}
+                    onAssigned={fetchEvent}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Pricing Model */}
@@ -298,7 +359,118 @@ export default function EventDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Cancel / Delete Event */}
+      {(showCancelDelete || event.status === "CANCELLED") && (
+        <div className="flex items-center gap-3 pt-2">
+          {showCancelDelete && (
+            <Button
+              variant="outline"
+              onClick={handleCancelEvent}
+              className="border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10"
+            >
+              Cancel Event
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDeleteEvent}
+            className="border-red-500/30 text-red-500 hover:bg-red-500/10"
+          >
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+            Delete Event
+          </Button>
+        </div>
+      )}
     </div>
+  );
+}
+
+// ─── INSTRUCTOR ASSIGNMENT DIALOG ───
+
+function InstructorAssignDialog({
+  eventId,
+  currentInstructorId,
+  onAssigned,
+}: {
+  eventId: string;
+  currentInstructorId: string | null;
+  onAssigned: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [instructors, setInstructors] = useState<Instructor[]>([]);
+  const [selectedId, setSelectedId] = useState<string>(currentInstructorId ?? "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      fetch("/api/instructors")
+        .then((res) => res.json())
+        .then((data) => setInstructors(data));
+      setSelectedId(currentInstructorId ?? "");
+    }
+  }, [open, currentInstructorId]);
+
+  async function handleSave() {
+    setSaving(true);
+    const res = await fetch(`/api/events/${eventId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ instructorId: selectedId || null }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      toast.success("Instructor assigned");
+      setOpen(false);
+      onAssigned();
+    } else {
+      toast.error("Failed to assign instructor");
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 px-2 text-[10px] border-[rgba(215,211,205,0.15)] text-[#B9B6AF] hover:bg-[#363130]"
+        >
+          <UserCheck className="h-3 w-3 mr-1" />
+          Assign
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="bg-[#2C2828] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]">
+        <DialogHeader>
+          <DialogTitle style={{ fontFamily: "var(--font-space-grotesk)" }}>Assign Instructor</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label className="text-[#B9B6AF]">Instructor</Label>
+            <select
+              value={selectedId}
+              onChange={(e) => setSelectedId(e.target.value)}
+              className="w-full h-9 rounded-md bg-[#363130] border border-[rgba(215,211,205,0.1)] text-[#D7D3CD] px-3 text-sm mt-1"
+            >
+              <option value="">-- None --</option>
+              {instructors.map((inst) => (
+                <option key={inst.id} value={inst.id}>
+                  {inst.firstName} {inst.lastName}{inst.credentials ? `, ${inst.credentials}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full bg-[#8FBDA3] text-[#231F20] hover:bg-[#8FBDA3]/90"
+          >
+            {saving ? "Saving..." : "Save"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -319,6 +491,11 @@ function AttendeesSection({ eventId }: { eventId: string }) {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [editAttendee, setEditAttendee] = useState<Attendee | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [deleteAttendee, setDeleteAttendee] = useState<Attendee | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   async function fetchAttendees() {
     const res = await fetch(`/api/attendees?courseEventId=${eventId}`);
@@ -352,6 +529,48 @@ function AttendeesSection({ eventId }: { eventId: string }) {
       fetchAttendees();
     } else {
       toast.error("Failed to add attendee");
+    }
+  }
+
+  async function handleEditSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editAttendee) return;
+    setEditLoading(true);
+    const fd = new FormData(e.currentTarget);
+    const body = {
+      firstName: fd.get("firstName"),
+      lastName: fd.get("lastName"),
+      email: fd.get("email") || "",
+      credentials: fd.get("credentials") || "",
+      registrationType: fd.get("registrationType") || "PAID",
+      amountPaid: fd.get("amountPaid") || "0",
+    };
+    const res = await fetch(`/api/attendees/${editAttendee.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setEditLoading(false);
+    if (res.ok) {
+      toast.success("Attendee updated");
+      setEditOpen(false);
+      setEditAttendee(null);
+      fetchAttendees();
+    } else {
+      toast.error("Failed to update attendee");
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteAttendee) return;
+    const res = await fetch(`/api/attendees/${deleteAttendee.id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Attendee removed");
+      setDeleteOpen(false);
+      setDeleteAttendee(null);
+      fetchAttendees();
+    } else {
+      toast.error("Failed to remove attendee");
     }
   }
 
@@ -431,11 +650,107 @@ function AttendeesSection({ eventId }: { eventId: string }) {
                   <span className={`text-[10px] px-2 py-0.5 rounded ${a.ceuCertificateIssued ? "bg-[#8FBDA3]/20 text-[#8FBDA3]" : "bg-[#363130] text-[#B9B6AF]"}`}>
                     {a.ceuCertificateIssued ? "CEU Sent" : "Pending"}
                   </span>
+                  <button
+                    onClick={() => { setEditAttendee(a); setEditOpen(true); }}
+                    className="opacity-50 hover:opacity-100 transition-opacity text-[#B9B6AF] hover:text-[#D7D3CD]"
+                    title="Edit attendee"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => { setDeleteAttendee(a); setDeleteOpen(true); }}
+                    className="opacity-50 hover:opacity-100 transition-opacity text-[#B9B6AF] hover:text-red-400"
+                    title="Remove attendee"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
+
+        {/* Edit Attendee Dialog */}
+        <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) setEditAttendee(null); }}>
+          <DialogContent className="bg-[#2C2828] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]">
+            <DialogHeader>
+              <DialogTitle style={{ fontFamily: "var(--font-space-grotesk)" }}>Edit Attendee</DialogTitle>
+            </DialogHeader>
+            {editAttendee && (
+              <form onSubmit={handleEditSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-[#B9B6AF]">First Name *</Label>
+                    <Input name="firstName" required defaultValue={editAttendee.firstName} className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]" />
+                  </div>
+                  <div>
+                    <Label className="text-[#B9B6AF]">Last Name *</Label>
+                    <Input name="lastName" required defaultValue={editAttendee.lastName} className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-[#B9B6AF]">Email</Label>
+                    <Input name="email" type="email" defaultValue={editAttendee.email} className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]" />
+                  </div>
+                  <div>
+                    <Label className="text-[#B9B6AF]">Credentials</Label>
+                    <Input name="credentials" defaultValue={editAttendee.credentials} className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-[#B9B6AF]">Registration Type</Label>
+                    <select name="registrationType" defaultValue={editAttendee.registrationType} className="w-full h-9 rounded-md bg-[#363130] border border-[rgba(215,211,205,0.1)] text-[#D7D3CD] px-3 text-sm">
+                      <option value="PAID">Paid</option>
+                      <option value="FREE_HOST_SEAT">Free Host Seat</option>
+                      <option value="COMP">Comp</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-[#B9B6AF]">Amount Paid</Label>
+                    <Input name="amountPaid" type="number" step="0.01" defaultValue={editAttendee.amountPaid} className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]" />
+                  </div>
+                </div>
+                <Button type="submit" disabled={editLoading} className="w-full bg-[#8FBDA3] text-[#231F20] hover:bg-[#8FBDA3]/90">
+                  {editLoading ? "Saving..." : "Save Changes"}
+                </Button>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Attendee Confirmation Dialog */}
+        <Dialog open={deleteOpen} onOpenChange={(v) => { setDeleteOpen(v); if (!v) setDeleteAttendee(null); }}>
+          <DialogContent className="bg-[#2C2828] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]">
+            <DialogHeader>
+              <DialogTitle style={{ fontFamily: "var(--font-space-grotesk)" }}>Remove Attendee</DialogTitle>
+            </DialogHeader>
+            {deleteAttendee && (
+              <div className="space-y-4">
+                <p className="text-sm text-[#B9B6AF]">
+                  Remove {deleteAttendee.firstName} {deleteAttendee.lastName} from this event?
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => { setDeleteOpen(false); setDeleteAttendee(null); }}
+                    className="border-[rgba(215,211,205,0.15)] text-[#D7D3CD] hover:bg-[#363130]"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleDelete}
+                    className="bg-red-600 text-white hover:bg-red-700"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

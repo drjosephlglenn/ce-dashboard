@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -14,15 +14,20 @@ import {
   Coffee,
   Beaker,
   GraduationCap,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -80,16 +85,107 @@ interface CourseDetail {
 
 type Tab = "overview" | "schedule" | "objectives" | "bibliography" | "events";
 
+const COURSE_FORMATS = ["LIVE_PRIVATE", "LIVE_PUBLIC", "ONLINE_SELF_PACED", "HYBRID"] as const;
+
 export default function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    title: "",
+    shortCode: "",
+    description: "",
+    ceuHours: 0,
+    targetAudience: "",
+    format: "",
+    maxAttendees: 0,
+    defaultPrice: "",
+    prerequisites: "",
+    instructionalLevel: "",
+    version: "",
+    isActive: true,
+  });
+
+  const fetchCourse = () => {
     fetch(`/api/courses/${id}`)
       .then((r) => r.json())
       .then(setCourse);
+  };
+
+  useEffect(() => {
+    fetchCourse();
   }, [id]);
+
+  // Sync edit form when course loads or edit dialog opens
+  useEffect(() => {
+    if (course && editOpen) {
+      setEditForm({
+        title: course.title,
+        shortCode: course.shortCode,
+        description: course.description || "",
+        ceuHours: course.ceuHours,
+        targetAudience: course.targetAudience,
+        format: course.format,
+        maxAttendees: course.maxAttendees,
+        defaultPrice: String(course.defaultPrice),
+        prerequisites: course.prerequisites || "",
+        instructionalLevel: course.instructionalLevel || "",
+        version: course.version || "",
+        isActive: course.isActive,
+      });
+    }
+  }, [course, editOpen]);
+
+  async function handleEditSave() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/courses/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...editForm,
+          ceuHours: Number(editForm.ceuHours),
+          maxAttendees: Number(editForm.maxAttendees),
+          defaultPrice: Number(editForm.defaultPrice),
+        }),
+      });
+      if (res.ok) {
+        toast.success("Course updated");
+        setEditOpen(false);
+        fetchCourse();
+      } else {
+        toast.error("Failed to update course");
+      }
+    } catch {
+      toast.error("Failed to update course");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/courses/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Course deleted");
+        router.push("/courses");
+      } else {
+        toast.error("Failed to delete course");
+      }
+    } catch {
+      toast.error("Failed to delete course");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   if (!course) return <div className="text-[#B9B6AF]">Loading...</div>;
 
@@ -133,6 +229,221 @@ export default function CourseDetailPage() {
             )}
           </div>
           <p className="text-sm text-[#B9B6AF] max-w-3xl">{course.description || "No description"}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Edit Course Button */}
+          <Dialog open={editOpen} onOpenChange={setEditOpen}>
+            <DialogTrigger>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD] hover:bg-[#8FBDA3]/20 hover:text-[#8FBDA3]"
+              >
+                <Pencil className="h-4 w-4 mr-2" /> Edit Course
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-[#2C2828] border-[rgba(215,211,205,0.1)] text-[#D7D3CD] max-w-2xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle style={{ fontFamily: "var(--font-space-grotesk)" }}>
+                  Edit Course
+                </DialogTitle>
+                <DialogDescription className="text-[#B9B6AF]">
+                  Update course details below.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                {/* Row 1: Title + Short Code */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[#B9B6AF]">Title</Label>
+                    <Input
+                      value={editForm.title}
+                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                      className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[#B9B6AF]">Short Code</Label>
+                    <Input
+                      value={editForm.shortCode}
+                      onChange={(e) => setEditForm({ ...editForm, shortCode: e.target.value })}
+                      className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]"
+                    />
+                  </div>
+                </div>
+
+                {/* Description (full width) */}
+                <div className="space-y-2">
+                  <Label className="text-[#B9B6AF]">Description</Label>
+                  <Textarea
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    rows={3}
+                    className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]"
+                  />
+                </div>
+
+                {/* Row 2: CEU Hours + Target Audience */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[#B9B6AF]">CEU Hours</Label>
+                    <Input
+                      type="number"
+                      value={editForm.ceuHours}
+                      onChange={(e) => setEditForm({ ...editForm, ceuHours: Number(e.target.value) })}
+                      className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[#B9B6AF]">Target Audience</Label>
+                    <Input
+                      value={editForm.targetAudience}
+                      onChange={(e) => setEditForm({ ...editForm, targetAudience: e.target.value })}
+                      className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 3: Format + Max Attendees */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[#B9B6AF]">Format</Label>
+                    <select
+                      value={editForm.format}
+                      onChange={(e) => setEditForm({ ...editForm, format: e.target.value })}
+                      className="w-full h-9 rounded-md bg-[#363130] border border-[rgba(215,211,205,0.1)] text-[#D7D3CD] px-3 text-sm"
+                    >
+                      {COURSE_FORMATS.map((f) => (
+                        <option key={f} value={f}>
+                          {f.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[#B9B6AF]">Max Attendees</Label>
+                    <Input
+                      type="number"
+                      value={editForm.maxAttendees}
+                      onChange={(e) => setEditForm({ ...editForm, maxAttendees: Number(e.target.value) })}
+                      className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 4: Default Price + Instructional Level */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[#B9B6AF]">Default Price</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={editForm.defaultPrice}
+                      onChange={(e) => setEditForm({ ...editForm, defaultPrice: e.target.value })}
+                      className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[#B9B6AF]">Instructional Level</Label>
+                    <Input
+                      value={editForm.instructionalLevel}
+                      onChange={(e) => setEditForm({ ...editForm, instructionalLevel: e.target.value })}
+                      className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 5: Version + isActive */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[#B9B6AF]">Version</Label>
+                    <Input
+                      value={editForm.version}
+                      onChange={(e) => setEditForm({ ...editForm, version: e.target.value })}
+                      className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]"
+                    />
+                  </div>
+                  <div className="flex items-end pb-1">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editForm.isActive}
+                        onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
+                        className="h-4 w-4 rounded border-[rgba(215,211,205,0.2)] bg-[#363130] accent-[#8FBDA3]"
+                      />
+                      <span className="text-sm text-[#B9B6AF]">Active</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Prerequisites (full width) */}
+                <div className="space-y-2">
+                  <Label className="text-[#B9B6AF]">Prerequisites</Label>
+                  <Textarea
+                    value={editForm.prerequisites}
+                    onChange={(e) => setEditForm({ ...editForm, prerequisites: e.target.value })}
+                    rows={2}
+                    className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setEditOpen(false)}
+                  className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD] hover:bg-[#363130]/80"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleEditSave}
+                  disabled={saving}
+                  className="bg-[#8FBDA3] text-[#231F20] hover:bg-[#8FBDA3]/90"
+                >
+                  {saving ? "Saving..." : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Course Button */}
+          <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <DialogTrigger>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-red-400 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-[#2C2828] border-[rgba(215,211,205,0.1)] text-[#D7D3CD] max-w-md">
+              <DialogHeader>
+                <DialogTitle style={{ fontFamily: "var(--font-space-grotesk)" }}>
+                  Delete Course
+                </DialogTitle>
+                <DialogDescription className="text-[#B9B6AF]">
+                  Are you sure you want to delete <span className="font-semibold text-[#D7D3CD]">{course.title}</span>? This will remove the course and all associated data.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteOpen(false)}
+                  className="bg-[#363130] border-[rgba(215,211,205,0.1)] text-[#D7D3CD] hover:bg-[#363130]/80"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="bg-red-600 text-white hover:bg-red-700"
+                >
+                  {deleting ? "Deleting..." : "Delete Course"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

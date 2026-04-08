@@ -514,28 +514,7 @@ export default function FinancesPage() {
                 <Button type="submit" disabled={loading} className="flex-1 bg-[#8FBDA3] text-[#231F20] hover:bg-[#8FBDA3]/90">
                   {loading ? "Saving..." : "Save Changes"}
                 </Button>
-                {deleteConfirm === editRecord.id ? (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(editRecord.id)}
-                      className="text-red-400 hover:bg-red-500/10"
-                    >
-                      Confirm Delete
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDeleteConfirm(null)}
-                      className="text-[#B9B6AF]"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                ) : (
+                <Dialog open={deleteConfirm === editRecord.id} onOpenChange={(open) => { if (!open) setDeleteConfirm(null); }}>
                   <Button
                     type="button"
                     variant="ghost"
@@ -544,7 +523,21 @@ export default function FinancesPage() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                )}
+                  <DialogContent className="bg-[#2C2828] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]">
+                    <DialogHeader>
+                      <DialogTitle style={{ fontFamily: "var(--font-space-grotesk)" }}>Delete Transaction</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-[#B9B6AF]">Delete this transaction? This cannot be undone.</p>
+                    <div className="flex justify-end gap-3 mt-4">
+                      <Button variant="ghost" onClick={() => setDeleteConfirm(null)} className="text-[#B9B6AF]">
+                        Cancel
+                      </Button>
+                      <Button onClick={() => handleDelete(editRecord.id)} className="bg-red-600 hover:bg-red-700 text-white">
+                        Delete
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </form>
           )}

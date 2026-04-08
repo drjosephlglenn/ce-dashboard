@@ -9,6 +9,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Instructor {
@@ -38,6 +40,7 @@ export default function InstructorsPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Instructor | null>(null);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -94,6 +97,18 @@ export default function InstructorsPage() {
       toast.error("Failed to add instructor");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteInstructor = async (id: string) => {
+    try {
+      const res = await fetch(`/api/instructors/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      toast.success("Instructor deleted");
+      setDeleteTarget(null);
+      fetchInstructors();
+    } catch {
+      toast.error("Failed to delete instructor");
     }
   };
 
@@ -217,8 +232,14 @@ export default function InstructorsPage() {
             <div
               key={inst.id}
               onClick={() => router.push(`/instructors/${inst.id}`)}
-              className="cursor-pointer rounded-xl border border-[rgba(215,211,205,0.07)] bg-[#2C2828] p-5 transition hover:border-[#8FBDA3]/30"
+              className="cursor-pointer rounded-xl border border-[rgba(215,211,205,0.07)] bg-[#2C2828] p-5 transition hover:border-[#8FBDA3]/30 group relative"
             >
+              <button
+                onClick={(e) => { e.stopPropagation(); setDeleteTarget(inst); }}
+                className="absolute top-3 right-3 p-1.5 rounded-md text-[#B9B6AF] opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-400 transition-all"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
               <div className="mb-3 flex items-center justify-between">
                 <h3
                   className="text-lg font-semibold text-white"
@@ -227,7 +248,7 @@ export default function InstructorsPage() {
                   {inst.firstName} {inst.lastName}
                 </h3>
                 <span
-                  className="rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
+                  className="rounded-full px-2.5 py-0.5 text-xs font-medium text-white mr-6"
                   style={{ backgroundColor: STATUS_COLORS[inst.status] || "#666" }}
                 >
                   {inst.status}
@@ -254,6 +275,28 @@ export default function InstructorsPage() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="bg-[#2C2828] border-[rgba(215,211,205,0.07)] text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+              Delete Instructor
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-[#B9B6AF]">
+            Delete this instructor? They will be unassigned from any events.
+          </p>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)} className="text-[#B9B6AF]">
+              Cancel
+            </Button>
+            <Button onClick={() => deleteTarget && handleDeleteInstructor(deleteTarget.id)} className="bg-red-600 hover:bg-red-700 text-white">
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

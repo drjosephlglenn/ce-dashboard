@@ -8,6 +8,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface SequenceStep {
@@ -38,6 +40,7 @@ export default function SequencesPage() {
   const [enrollSequenceId, setEnrollSequenceId] = useState<string | null>(null);
   const [enrollClinicId, setEnrollClinicId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Sequence | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -127,6 +130,18 @@ export default function SequencesPage() {
       toast.error("Failed to enroll clinic");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteSequence = async (id: string) => {
+    try {
+      const res = await fetch(`/api/sequences/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      toast.success("Sequence deleted");
+      setDeleteTarget(null);
+      fetchSequences();
+    } catch {
+      toast.error("Failed to delete sequence");
     }
   };
 
@@ -324,6 +339,12 @@ export default function SequencesPage() {
                   >
                     Enroll Clinic
                   </button>
+                  <button
+                    onClick={() => setDeleteTarget(seq)}
+                    className="p-1.5 rounded-md text-[#B9B6AF] hover:bg-red-500/10 hover:text-red-400 transition-all"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
 
@@ -356,6 +377,28 @@ export default function SequencesPage() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="bg-[#2C2828] border-[rgba(215,211,205,0.07)] text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+              Delete Sequence
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-[#B9B6AF]">
+            Delete this sequence? All clinic enrollments will be removed.
+          </p>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)} className="text-[#B9B6AF]">
+              Cancel
+            </Button>
+            <Button onClick={() => deleteTarget && handleDeleteSequence(deleteTarget.id)} className="bg-red-600 hover:bg-red-700 text-white">
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

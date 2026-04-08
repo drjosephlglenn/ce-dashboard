@@ -1,8 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 interface Instructor {
@@ -45,11 +53,13 @@ const EVENT_STATUS_COLORS: Record<string, string> = {
 
 export default function InstructorDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const [instructor, setInstructor] = useState<Instructor | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingPayRate, setEditingPayRate] = useState(false);
   const [payRateValue, setPayRateValue] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const fetchInstructor = async () => {
     try {
@@ -92,6 +102,17 @@ export default function InstructorDetailPage() {
     }
     updateField("payRate", rate);
     setEditingPayRate(false);
+  };
+
+  const handleDelete = async () => {
+    try {
+      const res = await fetch(`/api/instructors/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      toast.success("Instructor deleted");
+      router.push("/instructors");
+    } catch {
+      toast.error("Failed to delete instructor");
+    }
   };
 
   if (loading) {
@@ -295,6 +316,43 @@ export default function InstructorDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Instructor */}
+      <div className="rounded-xl border border-red-500/20 bg-[#2C2828] p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-red-400" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+              Danger Zone
+            </h2>
+            <p className="text-xs text-[#B9B6AF] mt-1">Permanently delete this instructor and unassign them from all events.</p>
+          </div>
+          <Button onClick={() => setDeleteOpen(true)} className="bg-red-600 hover:bg-red-700 text-white">
+            <Trash2 className="h-4 w-4 mr-2" /> Delete Instructor
+          </Button>
+        </div>
+      </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="bg-[#2C2828] border-[rgba(215,211,205,0.07)] text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+              Delete Instructor
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-[#B9B6AF]">
+            Delete {instructor.firstName} {instructor.lastName}? This cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="ghost" onClick={() => setDeleteOpen(false)} className="text-[#B9B6AF]">
+              Cancel
+            </Button>
+            <Button onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white">
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
