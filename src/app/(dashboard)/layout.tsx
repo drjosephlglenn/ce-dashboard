@@ -18,7 +18,9 @@ import {
   BarChart3,
   ShieldCheck,
   Upload,
+  LogOut,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { SidelineWordmark } from "@/components/sideline-logo";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -49,7 +51,7 @@ const navGroups = [
   },
 ];
 
-function NavContent({ pathname, onItemClick }: { pathname: string; onItemClick?: () => void }) {
+function NavContent({ pathname, onItemClick, onLogout }: { pathname: string; onItemClick?: () => void; onLogout: () => void }) {
   return (
     <div className="flex flex-col h-full">
       <div className="p-6 pb-4">
@@ -85,6 +87,13 @@ function NavContent({ pathname, onItemClick }: { pathname: string; onItemClick?:
         ))}
       </nav>
       <div className="p-4 border-t border-[rgba(215,211,205,0.07)]">
+        <button
+          onClick={onLogout}
+          className="flex items-center gap-2 px-3 py-2 mb-2 w-full rounded-lg text-xs text-[#B9B6AF] hover:text-[#D7D3CD] hover:bg-[#2C2828] transition-colors"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          Log Out
+        </button>
         <p className="text-[9px] tracking-[0.16em] uppercase text-[rgba(215,211,205,0.25)]">
           Sideline · 2026
         </p>
@@ -95,13 +104,20 @@ function NavContent({ pathname, onItemClick }: { pathname: string; onItemClick?:
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <div className="flex h-screen bg-[#231F20]">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:w-[260px] lg:flex-col lg:fixed lg:inset-y-0 bg-[#1B1919] border-r border-[rgba(215,211,205,0.07)]">
-        <NavContent pathname={pathname} />
+        <NavContent pathname={pathname} onLogout={handleLogout} />
       </aside>
 
       {/* Mobile Header + Sheet */}
@@ -111,7 +127,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Menu className="h-5 w-5" />
           </SheetTrigger>
           <SheetContent side="left" className="w-[260px] p-0 bg-[#1B1919] border-r-[rgba(215,211,205,0.07)]">
-            <NavContent pathname={pathname} onItemClick={() => setMobileOpen(false)} />
+            <NavContent pathname={pathname} onItemClick={() => setMobileOpen(false)} onLogout={handleLogout} />
           </SheetContent>
         </Sheet>
         <div className="ml-3">
