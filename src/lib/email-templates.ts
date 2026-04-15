@@ -1,15 +1,22 @@
 const baseStyle = `
-  body { margin: 0; padding: 0; background-color: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-  .container { max-width: 600px; margin: 0 auto; background-color: #16213e; border-radius: 8px; overflow: hidden; }
-  .header { background-color: #0f3460; padding: 24px; text-align: center; }
-  .header h1 { color: #a8e6cf; margin: 0; font-size: 24px; letter-spacing: 2px; }
-  .body { padding: 32px 24px; color: #e0e0e0; line-height: 1.6; }
-  .body h2 { color: #a8e6cf; margin-top: 0; }
-  .detail { background-color: #1a1a2e; border-left: 3px solid #a8e6cf; padding: 12px 16px; margin: 16px 0; border-radius: 0 4px 4px 0; }
-  .detail p { margin: 4px 0; color: #c0c0c0; }
-  .detail strong { color: #ffffff; }
-  .cta { display: inline-block; background-color: #a8e6cf; color: #1a1a2e; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: 600; margin-top: 16px; }
-  .footer { padding: 16px 24px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #0f3460; }
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+  body { margin: 0; padding: 0; background-color: #231F20; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  .container { max-width: 600px; margin: 0 auto; background-color: #2C2828; border-radius: 8px; overflow: hidden; }
+  .header { background-color: #1B1919; padding: 28px 24px; text-align: center; border-bottom: 1px solid rgba(215,211,205,0.07); }
+  .header h1 { color: #D7D3CD; margin: 0; font-size: 22px; letter-spacing: 6px; font-weight: 400; font-family: 'Space Grotesk', sans-serif; }
+  .header p { color: #B9B6AF; margin: 4px 0 0; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+  .body { padding: 32px 24px; color: #D7D3CD; line-height: 1.7; font-size: 15px; }
+  .body h2 { color: #8FBDA3; margin-top: 0; font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 600; }
+  .body p { margin: 0 0 12px; }
+  .body a { color: #8FBDA3; }
+  .detail { background-color: #363130; border-left: 3px solid #8FBDA3; padding: 14px 18px; margin: 16px 0; border-radius: 0 6px 6px 0; }
+  .detail p { margin: 4px 0; color: #B9B6AF; }
+  .detail strong { color: #D7D3CD; }
+  .cta { display: inline-block; background-color: #8FBDA3; color: #231F20; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; margin-top: 16px; font-family: 'Space Grotesk', sans-serif; letter-spacing: 0.5px; }
+  .footer { padding: 20px 24px; text-align: center; color: #B9B6AF; font-size: 11px; border-top: 1px solid rgba(215,211,205,0.07); letter-spacing: 0.5px; }
+  ul { color: #B9B6AF; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  li strong { color: #D7D3CD; }
 `;
 
 function wrap(content: string): string {
@@ -17,9 +24,9 @@ function wrap(content: string): string {
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>${baseStyle}</style></head>
 <body><div class="container">
-  <div class="header"><h1>SIDELINE</h1></div>
+  <div class="header"><h1>S I D E L I N E</h1><p>by Joey Glenn</p></div>
   ${content}
-  <div class="footer">SIDELINE &mdash; Continuing Education by Dr. Joey Glenn<br/>This is an automated message.</div>
+  <div class="footer">SIDELINE &mdash; Continuing Education by Dr. Joey Glenn, DC, CSCS<br/>dr.josephlglenn@gmail.com</div>
 </div></body>
 </html>`;
 }
@@ -174,12 +181,12 @@ export function bfrL1ToAclUpgrade({
         <p>Since that course, the most common question I've gotten from clinicians who completed L1 is: <strong><em>"I know how to use BFR now, but how do I actually program it into my rehab protocols?"</em></strong></p>
         <p>That question is exactly why I built a new course:</p>
         <div class="detail">
-          <p><strong style="color:#a8e6cf;font-size:16px;">ACL+BFR Mastery: From Rehab to Return</strong></p>
+          <p><strong style="color:#8FBDA3;font-size:16px;">ACL+BFR Mastery: From Rehab to Return</strong></p>
           <p><strong>8 CEU Hours</strong> | Live, In-Person | 5 Hands-On Labs</p>
         </div>
         <p>This course picks up where L1 left off and gives your team a <strong>complete, phase-by-phase BFR protocol</strong> for ACL reconstruction rehab, from early post-op all the way through return-to-sport clearance.</p>
 
-        <h2 style="font-size:16px;margin-top:24px;color:#a8e6cf;">Here's what the protocol covers:</h2>
+        <h2 style="font-size:16px;margin-top:24px;color:#8FBDA3;">Here's what the protocol covers:</h2>
 
         <div class="detail">
           <p><strong>Early Post-Op (Weeks 1-6)</strong></p>
@@ -201,12 +208,12 @@ export function bfrL1ToAclUpgrade({
           <p>Objective clearance using strength testing, hop test batteries, landing quality, and psychological readiness. Your team will practice every test hands-on during the course.</p>
         </div>
 
-        <h2 style="font-size:16px;margin-top:24px;color:#a8e6cf;">A few things that set this course apart:</h2>
-        <ul style="color:#c0c0c0;padding-left:20px;">
-          <li><strong style="color:#e0e0e0;">Over half the course is hands-on</strong>, with a lab after every lecture module</li>
-          <li><strong style="color:#e0e0e0;">A pre-req video is sent beforehand</strong> so we can skip the basics and maximize practice time</li>
-          <li><strong style="color:#e0e0e0;">Your team walks away with a protocol</strong> they can start using immediately</li>
-          <li><strong style="color:#e0e0e0;">All content is backed by current peer-reviewed research</strong> (2022-2025)</li>
+        <h2 style="font-size:16px;margin-top:24px;color:#8FBDA3;">A few things that set this course apart:</h2>
+        <ul style="color:#B9B6AF;padding-left:20px;">
+          <li><strong style="color:#D7D3CD;">Over half the course is hands-on</strong>, with a lab after every lecture module</li>
+          <li><strong style="color:#D7D3CD;">A pre-req video is sent beforehand</strong> so we can skip the basics and maximize practice time</li>
+          <li><strong style="color:#D7D3CD;">Your team walks away with a protocol</strong> they can start using immediately</li>
+          <li><strong style="color:#D7D3CD;">All content is backed by current peer-reviewed research</strong> (2022-2025)</li>
         </ul>
 
         <p style="margin-top:24px;">Since your team already has the BFR foundation from L1, they're the perfect fit for this. <strong>It's designed to be the next step.</strong></p>
@@ -253,10 +260,10 @@ export function rebookingPitch({
         <p>Hi ${contactName},</p>
         <p>Thank you again for hosting <strong>${courseTitle}</strong> on ${eventDate} at ${clinicName}. The feedback from your team was great and we'd love to come back.</p>
         <p>A few reasons to rebook early:</p>
-        <ul style="color:#c0c0c0;padding-left:20px;">
-          <li><strong style="color:#a8e6cf;">Lock in your preferred date</strong> before the calendar fills up</li>
-          <li><strong style="color:#a8e6cf;">Keep your staff's CEUs on track</strong> — consistent annual education builds on itself</li>
-          <li><strong style="color:#a8e6cf;">New content:</strong> courses are updated each year with the latest evidence</li>
+        <ul style="color:#B9B6AF;padding-left:20px;">
+          <li><strong style="color:#8FBDA3;">Lock in your preferred date</strong> before the calendar fills up</li>
+          <li><strong style="color:#8FBDA3;">Keep your staff's CEUs on track</strong> — consistent annual education builds on itself</li>
+          <li><strong style="color:#8FBDA3;">New content:</strong> courses are updated each year with the latest evidence</li>
         </ul>
         <p>We can rebook the same course for new staff, or bring something different this time:</p>
         ${otherCoursesHtml}
@@ -388,7 +395,7 @@ export function preCourseEmail({
         ${prereqHtml}
         ${materialsHtml}
         <h2 style="font-size:16px;margin-top:24px;">What to Bring</h2>
-        <ul style="color:#c0c0c0;padding-left:20px;">
+        <ul style="color:#B9B6AF;padding-left:20px;">
           <li>Photo ID for CEU verification</li>
           <li>Notepad or device for notes</li>
           <li>Comfortable attire for hands-on portions</li>
