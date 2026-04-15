@@ -760,9 +760,27 @@ function AttendeesSection({ eventId }: { eventId: string }) {
 
 function SendMaterialsSection({ eventId }: { eventId: string }) {
   const [sending, setSending] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [attendeeCount, setAttendeeCount] = useState(0);
+
+  async function handleOpenConfirm() {
+    // Fetch attendee count first so user knows what they're about to send
+    try {
+      const res = await fetch(`/api/attendees?courseEventId=${eventId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const withEmail = Array.isArray(data) ? data.filter((a: { email?: string }) => a.email).length : 0;
+        setAttendeeCount(withEmail);
+      }
+    } catch {
+      setAttendeeCount(0);
+    }
+    setConfirmOpen(true);
+  }
 
   async function handleSendMaterials() {
     setSending(true);
+    setConfirmOpen(false);
     try {
       const res = await fetch(`/api/events/${eventId}/send-materials`, {
         method: "POST",
@@ -794,7 +812,7 @@ function SendMaterialsSection({ eventId }: { eventId: string }) {
           </div>
           <Button
             size="sm"
-            onClick={handleSendMaterials}
+            onClick={handleOpenConfirm}
             disabled={sending}
             className="bg-[#8FBDA3] text-[#231F20] hover:bg-[#8FBDA3]/90"
           >
@@ -806,6 +824,49 @@ function SendMaterialsSection({ eventId }: { eventId: string }) {
           Sends the slide deck and course prep info to all registered attendees via email.
         </p>
       </CardContent>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="bg-[#2C2828] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]">
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: "var(--font-space-grotesk)" }}>
+              Confirm: Send Pre-Course Materials
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-[#B9B6AF]">
+              This will send the pre-course email with the slide deck and logistics info to{" "}
+              <span className="text-[#D7D3CD] font-medium">{attendeeCount} attendee{attendeeCount !== 1 ? "s" : ""}</span>{" "}
+              with email addresses on file.
+            </p>
+            <p className="text-sm text-[#B9B6AF]">
+              You will be CC&apos;d on each email.
+            </p>
+            {attendeeCount === 0 && (
+              <p className="text-sm text-amber-400">
+                No attendees have email addresses. Add emails to attendee records first.
+              </p>
+            )}
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmOpen(false)}
+                className="flex-1 border-[rgba(215,211,205,0.15)] text-[#D7D3CD] hover:bg-[#363130]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendMaterials}
+                disabled={attendeeCount === 0}
+                className="flex-1 bg-[#8FBDA3] text-[#231F20] hover:bg-[#8FBDA3]/90"
+              >
+                <Send className="h-3.5 w-3.5 mr-1.5" />
+                Send to {attendeeCount} Attendee{attendeeCount !== 1 ? "s" : ""}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
