@@ -761,19 +761,35 @@ function AttendeesSection({ eventId }: { eventId: string }) {
 function SendMaterialsSection({ eventId }: { eventId: string }) {
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [attendeeCount, setAttendeeCount] = useState(0);
+  const [previewData, setPreviewData] = useState<{
+    attendeeCount: number;
+    attendees: { name: string; email: string }[];
+    subject: string;
+    html: string;
+  } | null>(null);
 
   async function handleOpenConfirm() {
-    // Fetch attendee count first so user knows what they're about to send
+    // Fetch preview from a dedicated endpoint
     try {
-      const res = await fetch(`/api/attendees?courseEventId=${eventId}`);
+      const res = await fetch(`/api/events/${eventId}/send-materials/preview`);
       if (res.ok) {
-        const data = await res.json();
-        const withEmail = Array.isArray(data) ? data.filter((a: { email?: string }) => a.email).length : 0;
-        setAttendeeCount(withEmail);
+        setPreviewData(await res.json());
+      } else {
+        // Fallback: just get attendee count
+        const attRes = await fetch(`/api/attendees?courseEventId=${eventId}`);
+        if (attRes.ok) {
+          const data = await attRes.json();
+          const withEmail = Array.isArray(data) ? data.filter((a: { email?: string }) => a.email) : [];
+          setPreviewData({
+            attendeeCount: withEmail.length,
+            attendees: withEmail.map((a: { firstName: string; lastName: string; email: string }) => ({ name: `${a.firstName} ${a.lastName}`, email: a.email })),
+            subject: "",
+            html: "",
+          });
+        }
       }
     } catch {
-      setAttendeeCount(0);
+      setPreviewData(null);
     }
     setConfirmOpen(true);
   }
@@ -800,6 +816,8 @@ function SendMaterialsSection({ eventId }: { eventId: string }) {
     setSending(false);
   }
 
+  const attendeeCount = previewData?.attendeeCount ?? 0;
+
   return (
     <Card className="bg-[#2C2828] border-[rgba(215,211,205,0.07)]">
       <CardContent className="p-6">
@@ -825,28 +843,66 @@ function SendMaterialsSection({ eventId }: { eventId: string }) {
         </p>
       </CardContent>
 
-      {/* Confirmation Dialog */}
+      {/* Preview & Confirmation Dialog */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="bg-[#2C2828] border-[rgba(215,211,205,0.1)] text-[#D7D3CD]">
+        <DialogContent className="bg-[#2C2828] border-[rgba(215,211,205,0.1)] text-[#D7D3CD] max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle style={{ fontFamily: "var(--font-space-grotesk)" }}>
-              Confirm: Send Pre-Course Materials
+              Preview: Pre-Course Email
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-[#B9B6AF]">
-              This will send the pre-course email with the slide deck and logistics info to{" "}
-              <span className="text-[#D7D3CD] font-medium">{attendeeCount} attendee{attendeeCount !== 1 ? "s" : ""}</span>{" "}
-              with email addresses on file.
-            </p>
-            <p className="text-sm text-[#B9B6AF]">
-              You will be CC&apos;d on each email.
-            </p>
-            {attendeeCount === 0 && (
-              <p className="text-sm text-amber-400">
-                No attendees have email addresses. Add emails to attendee records first.
+            {/* Recipients */}
+            <div className="space-y-1.5">
+              <p className="text-[10px] tracking-[0.16em] uppercase text-[#B9B6AF]">
+                Recipients ({attendeeCount})
               </p>
+              {previewData?.attendees && previewData.attendees.length > 0 ? (
+                <div className="bg-[#363130] rounded-md px-3 py-2 max-h-[80px] overflow-y-auto space-y-0.5">
+                  {previewData.attendees.map((a, i) => (
+                    <p key={i} className="text-xs text-[#B9B6AF]">
+                      {a.name} — <span className="text-[#D7D3CD]">{a.email}</span>
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-amber-400">
+                  No attendees have email addresses. Add emails to attendee records first.
+                </p>
+              )}
+              <p className="text-xs text-[#B9B6AF]">
+                You will be CC&apos;d on each email.
+              </p>
+            </div>
+
+            {/* Subject */}
+            {previewData?.subject && (
+              <div className="space-y-1">
+                <p className="text-[10px] tracking-[0.16em] uppercase text-[#B9B6AF]">Subject</p>
+                <p className="text-sm text-[#D7D3CD] bg-[#363130] rounded-md px-3 py-2">{previewData.subject}</p>
+              </div>
             )}
+
+            {/* Email Preview */}
+            {previewData?.html && (
+              <div className="space-y-1">
+                <p className="text-[10px] tracking-[0.16em] uppercase text-[#B9B6AF]">Email Preview</p>
+                <div
+                  className="rounded-md overflow-hidden border border-[rgba(215,211,205,0.1)]"
+                  style={{ maxHeight: "350px", overflowY: "auto" }}
+                >
+                  <iframe
+                    srcDoc={previewData.html}
+                    title="Email preview"
+                    className="w-full border-0"
+                    style={{ height: "350px", background: "#1a1a2e" }}
+                    sandbox=""
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
             <div className="flex gap-3 pt-2">
               <Button
                 variant="outline"
