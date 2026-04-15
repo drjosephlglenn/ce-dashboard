@@ -58,6 +58,7 @@ export async function POST(req: Request) {
       to: body.to,
       subject: body.subject,
       html: body.html,
+      cc: body.cc || undefined,
       attachments: attachments.length > 0 ? attachments : undefined,
     });
 

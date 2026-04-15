@@ -19,6 +19,7 @@ export async function sendEmail(params: {
   to: string;
   subject: string;
   html: string;
+  cc?: string;
   attachments?: Attachment[];
 }) {
   if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
@@ -31,6 +32,7 @@ export async function sendEmail(params: {
     to: params.to,
     subject: params.subject,
     html: params.html,
+    cc: params.cc,
     attachments: params.attachments,
   });
 

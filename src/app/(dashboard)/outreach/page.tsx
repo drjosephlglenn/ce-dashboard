@@ -285,7 +285,7 @@ export default function OutreachPage() {
   }
 
   // Open email for upcoming event — pre-course info template with date injected
-  function openPreCourseEmail(event: UpcomingEvent) {
+  async function openPreCourseEmail(event: UpcomingEvent) {
     const contact = contacts.find((c) => c.clinicId === event.clinic.id);
     const contactName = contact?.firstName || "there";
     const toEmail = contact?.email || "";
@@ -294,6 +294,35 @@ export default function OutreachPage() {
     const subject = `What to Expect — ${event.course.title} on ${eventDateStr}`;
     const body = `Hi ${contactName},\n\nLooking forward to seeing you at the upcoming ${event.course.title} course at ${event.clinic.name} on ${eventDateStr}.\n\nHere's what you need to know:\n\nSchedule\n• Class begins at 8:00 AM and wraps up by 4:00 PM with breaks built in throughout the day.\n\nFor clinic directors/hosts: I'll arrive at 7:20 AM to get set up. If there's a specific room or anything I should know about the space, just shoot me a quick reply.\n\nMaterials\n• I teach off the attached slide deck — if you like to follow along or take notes digitally, feel free to print it out or bring a laptop/tablet. Totally optional.\n\nWhat to Wear\n• Dress comfortably — we'll be doing hands-on labs throughout the day, so athletic or clinical attire works best.\n\nSee you there!\n\nJoey Glenn, DC, CSCS\nSIDELINE Continuing Education\ndr.josephlglenn@gmail.com`;
 
+    // Auto-attach slide decks for this course
+    const slideDecks = materials.filter(
+      (m) => m.type === "SLIDE_DECK" && m.course?.title === event.course.title
+    );
+    setSelectedMaterials(slideDecks.map((m) => m.id));
+
+    // Build recipient list without overwriting the form
+    const recipientOpts: RecipientOption[] = [];
+    const clinicContacts = contacts.filter((c) => c.clinicId === event.clinic.id && c.email);
+    clinicContacts.forEach((c) => {
+      recipientOpts.push({ email: c.email, label: `${c.firstName} ${c.lastName}`, type: "contact" });
+    });
+    try {
+      const res = await fetch(`/api/clinics/${event.clinic.id}`);
+      if (res.ok) {
+        const clinicData = await res.json();
+        const seenEmails = new Set(recipientOpts.map((r) => r.email.toLowerCase()));
+        (clinicData.courseEvents || []).forEach((ev: { course: { title: string }; attendees: { firstName: string; lastName: string; email: string; credentials: string }[] }) => {
+          (ev.attendees || []).forEach((att) => {
+            if (att.email && !seenEmails.has(att.email.toLowerCase())) {
+              seenEmails.add(att.email.toLowerCase());
+              recipientOpts.push({ email: att.email, label: `${att.firstName} ${att.lastName}${att.credentials ? `, ${att.credentials}` : ""}`, type: "attendee", courseName: ev.course.title });
+            }
+          });
+        });
+      }
+    } catch { /* recipients from contacts still available */ }
+    setRecipients(recipientOpts);
+
     setEmailForm({
       clinicId: event.clinic.id,
       to: toEmail,
@@ -301,16 +330,8 @@ export default function OutreachPage() {
       subject,
       body,
     });
-
-    // Auto-attach slide decks for this course
-    const slideDecks = materials.filter(
-      (m) => m.type === "SLIDE_DECK" && m.course?.title === event.course.title
-    );
-    setSelectedMaterials(slideDecks.map((m) => m.id));
-
     setRecipientMode(toEmail ? "select" : "custom");
     setEmailOpen(true);
-    handleClinicChange(event.clinic.id);
   }
 
   async function sendOneEmail(toEmail: string, subject: string, body: string, materialIds?: string[]) {
@@ -319,7 +340,12 @@ export default function OutreachPage() {
       .map((line) => (line.trim() === "" ? "<br/>" : `<p style="margin:0 0 8px 0;color:#333;font-family:sans-serif;">${line}</p>`))
       .join("");
 
-    const payload: Record<string, unknown> = { to: toEmail, subject, html };
+    const payload: Record<string, unknown> = {
+      to: toEmail,
+      subject,
+      html,
+      cc: "dr.josephlglenn@gmail.com",
+    };
     if (materialIds && materialIds.length > 0) payload.materialIds = materialIds;
 
     const res = await fetch("/api/email/send", {
@@ -825,7 +851,7 @@ export default function OutreachPage() {
                 </Button>
               </div>
               <p className="text-xs text-[#B9B6AF] text-center">
-                Sends from dr.josephlglenn@gmail.com &middot; Auto-logs as outreach with 7-day follow-up
+                Sends from dr.josephlglenn@gmail.com &middot; CC&apos;d to you &middot; Auto-logs with 7-day follow-up
               </p>
             </form>
           </DialogContent>
@@ -951,7 +977,7 @@ export default function OutreachPage() {
                           className="bg-[#8FBDA3] text-[#231F20] hover:bg-[#8FBDA3]/90"
                         >
                           <Mail className="h-3.5 w-3.5 mr-1.5" />
-                          Send Pre-Course Email
+                          Compose Pre-Course Email
                         </Button>
                         <Button
                           size="sm"
