@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Clock, AlertTriangle, Send, UserX, CheckCircle, Plus, Mail, Paperclip, X } from "lucide-react";
+import { Clock, AlertTriangle, Send, UserX, CheckCircle, Plus, Mail, Paperclip, X, CalendarClock, FileText, Users, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +55,18 @@ interface RecipientOption {
   courseName?: string;
 }
 
+interface UpcomingEvent {
+  id: string;
+  eventDate: string;
+  startTime: string;
+  status: string;
+  type: string;
+  attendeeCount: number;
+  maxAttendees: number;
+  course: { id: string; title: string; shortCode: string };
+  clinic: { id: string; name: string; city: string; state: string };
+}
+
 const EMAIL_TEMPLATES = [
   { value: "follow_up", label: "Follow-Up Reminder" },
   { value: "booking_confirmation", label: "Booking Confirmation" },
@@ -73,6 +85,7 @@ export default function OutreachPage() {
   const [recent, setRecent] = useState<OutreachItem[]>([]);
   const [clinics, setClinics] = useState<ClinicOption[]>([]);
   const [contacts, setContacts] = useState<ContactOption[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [open, setOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -84,13 +97,14 @@ export default function OutreachPage() {
     subject: "",
     body: "",
   });
-  const [emailPreview, setEmailPreview] = useState("");
   const [recipients, setRecipients] = useState<RecipientOption[]>([]);
   const [recipientMode, setRecipientMode] = useState<"select" | "custom" | "all">("select");
   const [sendAllProgress, setSendAllProgress] = useState({ sent: 0, total: 0, active: false });
   const [materials, setMaterials] = useState<{ id: string; title: string; type: string; fileUrl: string; course?: { title: string } | null }[]>([]);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [attachOpen, setAttachOpen] = useState(false);
+  // For the outreach log dialog
+  const [logClinicId, setLogClinicId] = useState("");
 
   async function fetchData() {
     const [overdueRes, todayRes, recentRes, clinicsRes, contactsRes, materialsRes] = await Promise.all([
@@ -109,6 +123,20 @@ export default function OutreachPage() {
     if (Array.isArray(contactData)) setContacts(contactData);
     const matData = await materialsRes.json();
     if (Array.isArray(matData)) setMaterials(matData);
+
+    // Fetch upcoming events in the next 10 days that need attention
+    const now = new Date();
+    const tenDaysOut = new Date(now.getTime() + 10 * 86400000);
+    const eventsRes = await fetch(
+      `/api/events?from=${now.toISOString().split("T")[0]}&to=${tenDaysOut.toISOString().split("T")[0]}`
+    );
+    if (eventsRes.ok) {
+      const events: UpcomingEvent[] = await eventsRes.json();
+      // Only show CONFIRMED or DEPOSIT_RECEIVED events
+      setUpcomingEvents(
+        events.filter((e) => e.status === "CONFIRMED" || e.status === "DEPOSIT_RECEIVED")
+      );
+    }
   }
 
   useEffect(() => { fetchData(); }, []);
@@ -229,6 +257,62 @@ export default function OutreachPage() {
     }
   }
 
+  // Open email dialog pre-populated for a specific clinic and template
+  function openEmailFor(clinicId: string, template: string) {
+    const clinic = clinics.find((c) => c.id === clinicId);
+    const contact = contacts.find((c) => c.clinicId === clinicId);
+    const clinicName = clinic?.name || "your clinic";
+    const contactName = contact?.firstName || "there";
+    const toEmail = contact?.email || "";
+
+    const content = template === "custom"
+      ? { subject: "", body: "" }
+      : generateEmailContent(template, clinicName, contactName);
+
+    setEmailForm({
+      clinicId,
+      to: toEmail,
+      template,
+      subject: content.subject,
+      body: content.body,
+    });
+    setSelectedMaterials([]);
+    setRecipientMode(toEmail ? "select" : "custom");
+    setEmailOpen(true);
+
+    // Load recipients in background
+    handleClinicChange(clinicId);
+  }
+
+  // Open email for upcoming event — pre-course info template with date injected
+  function openPreCourseEmail(event: UpcomingEvent) {
+    const contact = contacts.find((c) => c.clinicId === event.clinic.id);
+    const contactName = contact?.firstName || "there";
+    const toEmail = contact?.email || "";
+    const eventDateStr = formatDate(event.eventDate);
+
+    const subject = `What to Expect — ${event.course.title} on ${eventDateStr}`;
+    const body = `Hi ${contactName},\n\nLooking forward to seeing you at the upcoming ${event.course.title} course at ${event.clinic.name} on ${eventDateStr}.\n\nHere's what you need to know:\n\nSchedule\n• Class begins at 8:00 AM and wraps up by 4:00 PM with breaks built in throughout the day.\n\nFor clinic directors/hosts: I'll arrive at 7:20 AM to get set up. If there's a specific room or anything I should know about the space, just shoot me a quick reply.\n\nMaterials\n• I teach off the attached slide deck — if you like to follow along or take notes digitally, feel free to print it out or bring a laptop/tablet. Totally optional.\n\nWhat to Wear\n• Dress comfortably — we'll be doing hands-on labs throughout the day, so athletic or clinical attire works best.\n\nSee you there!\n\nJoey Glenn, DC, CSCS\nSIDELINE Continuing Education\ndr.josephlglenn@gmail.com`;
+
+    setEmailForm({
+      clinicId: event.clinic.id,
+      to: toEmail,
+      template: "pre_course_info",
+      subject,
+      body,
+    });
+
+    // Auto-attach slide decks for this course
+    const slideDecks = materials.filter(
+      (m) => m.type === "SLIDE_DECK" && m.course?.title === event.course.title
+    );
+    setSelectedMaterials(slideDecks.map((m) => m.id));
+
+    setRecipientMode(toEmail ? "select" : "custom");
+    setEmailOpen(true);
+    handleClinicChange(event.clinic.id);
+  }
+
   async function sendOneEmail(toEmail: string, subject: string, body: string, materialIds?: string[]) {
     const html = body
       .split("\n")
@@ -271,7 +355,6 @@ export default function OutreachPage() {
 
       for (const email of attendeeEmails) {
         try {
-          // Personalize the greeting if possible
           const recipient = recipients.find((r) => r.email === email);
           const firstName = recipient?.label.split(" ")[0] || "there";
           const personalizedBody = emailForm.body.replace(/^Hi .+,/m, `Hi ${firstName},`);
@@ -284,7 +367,6 @@ export default function OutreachPage() {
         }
       }
 
-      // Log one outreach entry for the batch
       if (emailForm.clinicId) {
         await fetch("/api/outreach", {
           method: "POST",
@@ -324,7 +406,6 @@ export default function OutreachPage() {
     try {
       await sendOneEmail(emailForm.to, emailForm.subject, emailForm.body, selectedMaterials);
 
-      // Also log as outreach activity
       if (emailForm.clinicId) {
         await fetch("/api/outreach", {
           method: "POST",
@@ -370,7 +451,7 @@ export default function OutreachPage() {
     setLoading(true);
     const fd = new FormData(e.currentTarget);
     const body = {
-      clinicId: fd.get("clinicId"),
+      clinicId: fd.get("clinicId") || logClinicId || undefined,
       method: fd.get("method") || "EMAIL",
       direction: fd.get("direction") || "OUTBOUND",
       subject: fd.get("subject") || "",
@@ -387,6 +468,7 @@ export default function OutreachPage() {
     if (res.ok) {
       toast.success("Outreach logged");
       setOpen(false);
+      setLogClinicId("");
       fetchData();
     } else {
       toast.error("Failed to log outreach");
@@ -416,11 +498,20 @@ export default function OutreachPage() {
     return (
       <div className="space-y-2">
         {items.map((item) => (
-          <Card key={item.id} className="bg-[#2C2828] border-[rgba(215,211,205,0.07)]">
+          <Card key={item.id} className="bg-[#2C2828] border-[rgba(215,211,205,0.07)] hover:border-[#8FBDA3]/20 transition-colors">
             <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-[#D7D3CD]">{item.clinic.name}</p>
+              <div className="flex items-start justify-between gap-3">
+                <button
+                  type="button"
+                  className="flex-1 text-left space-y-1"
+                  onClick={() => openEmailFor(item.clinic.id, "follow_up")}
+                >
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-[#D7D3CD] hover:text-[#8FBDA3] transition-colors">
+                      {item.clinic.name}
+                    </p>
+                    <ChevronRight className="h-3 w-3 text-[#B9B6AF]/50" />
+                  </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge className={`border-0 text-[10px] ${methodColors[item.method] || methodColors.OTHER}`}>
                       {item.method}
@@ -434,17 +525,34 @@ export default function OutreachPage() {
                   {item.followUpDate && !item.followUpCompleted && (
                     <p className="text-xs text-amber-400">Follow up: {formatDate(item.followUpDate)}</p>
                   )}
+                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {showMarkComplete && !item.followUpCompleted && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setLogClinicId(item.clinic.id);
+                          setOpen(true);
+                        }}
+                        className="text-[#B9B6AF] hover:text-[#D7D3CD] hover:bg-[#363130] h-8 px-2"
+                        title="Log outreach"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => markComplete(item.id)}
+                        className="text-[#8FBDA3] hover:bg-[#8FBDA3]/10 h-8 px-2"
+                        title="Mark done"
+                      >
+                        <CheckCircle className="h-3.5 w-3.5 mr-1" /> Done
+                      </Button>
+                    </>
+                  )}
                 </div>
-                {showMarkComplete && !item.followUpCompleted && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => markComplete(item.id)}
-                    className="text-[#8FBDA3] hover:bg-[#8FBDA3]/10"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-1" /> Done
-                  </Button>
-                )}
               </div>
             </CardContent>
           </Card>
@@ -457,6 +565,12 @@ export default function OutreachPage() {
     (c) => c.status === "LEAD" && !recent.some((r) => r.clinic.id === c.id)
   );
 
+  // Calculate days until event
+  function daysUntil(dateStr: string) {
+    const diff = new Date(dateStr).getTime() - Date.now();
+    return Math.ceil(diff / 86400000);
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -467,6 +581,7 @@ export default function OutreachPage() {
           <p className="text-sm text-[#B9B6AF] mt-1">Your daily action queue</p>
         </div>
         <div className="flex items-center gap-3">
+        {/* Email Dialog */}
         <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
           <DialogTrigger className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium border border-[#8FBDA3]/30 text-[#8FBDA3] hover:bg-[#8FBDA3]/10 transition-colors">
             <Mail className="h-4 w-4 mr-2" /> Send Email
@@ -545,7 +660,7 @@ export default function OutreachPage() {
                     >
                       <option value="">Select recipient...</option>
                       {recipients.length > 1 && (
-                        <option value="__all__">📨 Send to All ({recipients.filter((r) => r.email).length} recipients)</option>
+                        <option value="__all__">Send to All ({recipients.filter((r) => r.email).length} recipients)</option>
                       )}
                       {recipients.some((r) => r.type === "contact") && (
                         <optgroup label="Clinic Contacts">
@@ -715,7 +830,9 @@ export default function OutreachPage() {
             </form>
           </DialogContent>
         </Dialog>
-        <Dialog open={open} onOpenChange={setOpen}>
+
+        {/* Log Outreach Dialog */}
+        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setLogClinicId(""); }}>
           <DialogTrigger className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium bg-[#8FBDA3] text-[#231F20] hover:bg-[#8FBDA3]/90 transition-colors">
             <Plus className="h-4 w-4 mr-2" /> Log Outreach
           </DialogTrigger>
@@ -726,7 +843,12 @@ export default function OutreachPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Label className="text-[#B9B6AF]">Clinic *</Label>
-                <select name="clinicId" required className="w-full h-9 rounded-md bg-[#363130] border border-[rgba(215,211,205,0.1)] text-[#D7D3CD] px-3 text-sm">
+                <select
+                  name="clinicId"
+                  required
+                  defaultValue={logClinicId}
+                  className="w-full h-9 rounded-md bg-[#363130] border border-[rgba(215,211,205,0.1)] text-[#D7D3CD] px-3 text-sm"
+                >
                   <option value="">Select clinic...</option>
                   {clinics.map((c) => (
                     <option key={c.id} value={c.id}>{c.name} ({c.city}, {c.state})</option>
@@ -781,7 +903,75 @@ export default function OutreachPage() {
         </div>
       </div>
 
-      {/* Overdue */}
+      {/* ═══ ACTION NEEDED: Upcoming Events ═══ */}
+      {upcomingEvents.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarClock className="h-4 w-4 text-amber-400" />
+            <h2 className="text-sm font-semibold text-amber-400 uppercase tracking-wider">
+              Action Needed — Upcoming Events
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {upcomingEvents.map((event) => {
+              const days = daysUntil(event.eventDate);
+              const urgencyColor = days <= 2 ? "border-red-500/40 bg-red-500/5" : days <= 5 ? "border-amber-500/40 bg-amber-500/5" : "border-[#8FBDA3]/30 bg-[#8FBDA3]/5";
+              const urgencyText = days <= 0 ? "Today!" : days === 1 ? "Tomorrow" : `${days} days away`;
+              const urgencyTextColor = days <= 2 ? "text-red-400" : days <= 5 ? "text-amber-400" : "text-[#8FBDA3]";
+
+              return (
+                <Card key={event.id} className={`border ${urgencyColor}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 space-y-1.5">
+                        <div className="flex items-center gap-3">
+                          <p className="text-sm font-semibold text-[#D7D3CD]">{event.course.title}</p>
+                          <Badge className={`border-0 text-[10px] font-semibold ${urgencyTextColor} bg-transparent`}>
+                            {urgencyText}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-[#B9B6AF]">
+                          <span>{formatDate(event.eventDate)}</span>
+                          <span>·</span>
+                          <span>{event.clinic.name} — {event.clinic.city}, {event.clinic.state}</span>
+                          <span>·</span>
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {event.attendeeCount}/{event.maxAttendees} registered
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#B9B6AF]/70">
+                          Send the pre-course email with slide deck and logistics to the host clinic and roster
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          size="sm"
+                          onClick={() => openPreCourseEmail(event)}
+                          className="bg-[#8FBDA3] text-[#231F20] hover:bg-[#8FBDA3]/90"
+                        >
+                          <Mail className="h-3.5 w-3.5 mr-1.5" />
+                          Send Pre-Course Email
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openEmailFor(event.clinic.id, "custom")}
+                          className="border-[rgba(215,211,205,0.15)] text-[#D7D3CD] hover:bg-[#363130]"
+                        >
+                          Custom
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Overdue Follow-Ups ═══ */}
       {overdue.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
@@ -794,7 +984,7 @@ export default function OutreachPage() {
         </div>
       )}
 
-      {/* Today */}
+      {/* ═══ Today's Follow-Ups ═══ */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Clock className="h-4 w-4 text-[#8FBDA3]" />
@@ -805,7 +995,7 @@ export default function OutreachPage() {
         <OutreachList items={today} showMarkComplete />
       </div>
 
-      {/* Untouched Leads */}
+      {/* ═══ Untouched Leads ═══ */}
       {untouchedLeads.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
@@ -816,13 +1006,26 @@ export default function OutreachPage() {
           </div>
           <div className="space-y-2">
             {untouchedLeads.map((clinic) => (
-              <Card key={clinic.id} className="bg-[#2C2828] border-[rgba(215,211,205,0.07)]">
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-[#D7D3CD]">{clinic.name}</p>
-                    <p className="text-xs text-[#B9B6AF]">{clinic.city}, {clinic.state}</p>
-                  </div>
-                  <Badge className="bg-[#363130] text-[#B9B6AF] border-0 text-[10px]">Never contacted</Badge>
+              <Card key={clinic.id} className="bg-[#2C2828] border-[rgba(215,211,205,0.07)] hover:border-[#8FBDA3]/20 transition-colors">
+                <CardContent className="p-4">
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between"
+                    onClick={() => openEmailFor(clinic.id, "follow_up")}
+                  >
+                    <div className="text-left">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-[#D7D3CD] hover:text-[#8FBDA3] transition-colors">
+                          {clinic.name}
+                        </p>
+                        <ChevronRight className="h-3 w-3 text-[#B9B6AF]/50" />
+                      </div>
+                      <p className="text-xs text-[#B9B6AF]">{clinic.city}, {clinic.state}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-[#363130] text-[#B9B6AF] border-0 text-[10px]">Never contacted</Badge>
+                    </div>
+                  </button>
                 </CardContent>
               </Card>
             ))}
@@ -830,7 +1033,7 @@ export default function OutreachPage() {
         </div>
       )}
 
-      {/* Recent Activity */}
+      {/* ═══ Recent Activity ═══ */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Send className="h-4 w-4 text-[#B9B6AF]" />
